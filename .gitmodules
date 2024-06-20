@@ -1,0 +1,3 @@
+[submodule "Plugins/Animals"]
+	path = Plugins/Animals
+	url = https://atkins-global@dev.azure.com/atkins-global/Creative%20Design%20Unreal%20Packages/_git/Library_Animals
