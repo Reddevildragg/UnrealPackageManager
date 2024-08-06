@@ -17,6 +17,8 @@ static const FName UPMTabName("UPM");
 
 #define LOCTEXT_NAMESPACE "FUPMPluginModule"
 
+TSharedPtr<UUPMPackage> FUPMPluginModule::LoadedPackage = nullptr;
+
 void FUPMPluginModule::StartupModule()
 {
     FUPMStyle::Initialize();
@@ -50,6 +52,23 @@ void FUPMPluginModule::ShutdownModule()
 
 TSharedRef<SDockTab> FUPMPluginModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 {
+    if (!LoadedPackage.IsValid())
+    {
+        // Load or create the package.json file
+        LoadedPackage = UUPMPackage::LoadOrCreatePackageJson();
+    }
+
+    if (!LoadedPackage.IsValid())
+    {
+        // Handle the error case where the package could not be loaded or created
+        return SNew(SDockTab)
+            .TabRole(ETabRole::NomadTab)
+            [
+                SNew(STextBlock)
+                .Text(FText::FromString("Failed to load or create package.json"))
+            ];
+    }
+
     return SNew(SDockTab)
         .TabRole(ETabRole::NomadTab)
         [

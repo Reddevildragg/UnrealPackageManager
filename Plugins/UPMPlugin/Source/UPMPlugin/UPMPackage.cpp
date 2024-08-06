@@ -45,7 +45,7 @@ UUPMPackage* UUPMPackage::FromJson(TSharedPtr<FJsonObject> JsonObject)
     return Package;
 }
 
-UUPMPackage* UUPMPackage::LoadOrCreatePackageJson()
+TSharedPtr<UUPMPackage> UUPMPackage::LoadOrCreatePackageJson()
 {
     FString ProjectDir = FPaths::ProjectDir();
     FString UPMDir = FPaths::Combine(ProjectDir, TEXT("UPM"));
@@ -108,9 +108,52 @@ UUPMPackage* UUPMPackage::LoadOrCreatePackageJson()
 
         if (FJsonSerializer::Deserialize(Reader, JsonObject))
         {
-            return FromJson(JsonObject);
+            UUPMPackage* Package = FromJson(JsonObject);
+            return MakeShareable(Package);
         }
     }
 
     return nullptr;
+}
+
+void UUPMPackage::SavePackageJson(TSharedPtr<UUPMPackage> Package)
+{
+    TSharedPtr<FJsonObject> JsonObject = MakeShareable(new FJsonObject);
+    JsonObject->SetStringField(TEXT("name"), Package->Name);
+    JsonObject->SetStringField(TEXT("version"), Package->Version);
+
+    TSharedPtr<FJsonObject> DependenciesObject = MakeShareable(new FJsonObject);
+    for (const auto& Elem : Package->Dependencies)
+    {
+        DependenciesObject->SetStringField(Elem.Key, Elem.Value);
+    }
+    JsonObject->SetObjectField(TEXT("dependencies"), DependenciesObject);
+
+    TArray<TSharedPtr<FJsonValue>> ScopedRegistriesArray;
+    for (const auto& Registry : Package->ScopedRegistries)
+    {
+        TSharedPtr<FJsonObject> RegistryObject = MakeShareable(new FJsonObject);
+        RegistryObject->SetStringField(TEXT("name"), Registry.Name);
+        RegistryObject->SetStringField(TEXT("url"), Registry.Url);
+
+        TArray<TSharedPtr<FJsonValue>> ScopesArray;
+        for (const auto& Scope : Registry.Scopes)
+        {
+            ScopesArray.Add(MakeShareable(new FJsonValueString(Scope)));
+        }
+        RegistryObject->SetArrayField(TEXT("scopes"), ScopesArray);
+
+        ScopedRegistriesArray.Add(MakeShareable(new FJsonValueObject(RegistryObject)));
+    }
+    JsonObject->SetArrayField(TEXT("scopedRegistries"), ScopedRegistriesArray);
+
+    FString OutputString;
+    TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&OutputString);
+    if (FJsonSerializer::Serialize(JsonObject.ToSharedRef(), Writer))
+    {
+        FString ProjectDir = FPaths::ProjectDir();
+        FString UPMDir = FPaths::Combine(ProjectDir, TEXT("UPM"));
+        FString PackageJsonPath = FPaths::Combine(UPMDir, TEXT("package.json"));
+        FFileHelper::SaveStringToFile(OutputString, *PackageJsonPath);
+    }
 }

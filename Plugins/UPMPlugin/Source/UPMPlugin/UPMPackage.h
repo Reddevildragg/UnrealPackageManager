@@ -26,5 +26,7 @@ public:
     TArray<FScopedRegistry> ScopedRegistries;
 
     static UUPMPackage* FromJson(TSharedPtr<FJsonObject> JsonObject);
-    static UUPMPackage* LoadOrCreatePackageJson();
+    static TSharedPtr<UUPMPackage> LoadOrCreatePackageJson();
+
+    static void SavePackageJson(TSharedPtr<UUPMPackage> Package);
 };
