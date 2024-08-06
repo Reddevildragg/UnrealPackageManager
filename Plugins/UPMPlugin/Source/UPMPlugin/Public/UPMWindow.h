@@ -18,11 +18,13 @@ private:
     TArray<TSharedPtr<SVerticalBox>> RegistryBoxes;
 	TArray<TSharedPtr<SWidget>> ScopeTextBoxes;
 	FString SelectedRegistryName;
-
+	TArray<TSharedPtr<FString>> RegistryNames;
+	TSharedPtr<SVerticalBox> RegistryDetailsBox;
 
 	TSharedRef<ITableRow> OnGenerateRowForList(TSharedPtr<FString> Item, const TSharedRef<STableViewBase>& OwnerTable);
     TSharedRef<ITableRow> OnGenerateRowForTextBox(TSharedPtr<SWidget> Item, const TSharedRef<STableViewBase>& OwnerTable);
 	TSharedRef<ITableRow> OnGenerateRowForRegistry(TSharedPtr<SVerticalBox> Item, const TSharedRef<STableViewBase>& OwnerTable);
+	TSharedRef<ITableRow> OnGenerateRowForRegistryNames(TSharedPtr<FString> String, const TSharedRef<STableViewBase>& TableViewBase);
 
 	void OnRegistryNameTextCommitted(const FText& NewText, ETextCommit::Type CommitType, FString OldName);
 	void OnRegistryUrlTextCommitted(const FText& NewText, ETextCommit::Type CommitType, FString RegistryName);
