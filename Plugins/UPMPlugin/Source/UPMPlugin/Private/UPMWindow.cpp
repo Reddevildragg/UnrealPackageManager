@@ -5,6 +5,10 @@
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/Input/SButton.h"
 
+TMap<FString, FString> InitialRegistryNames;
+TMap<FString, FString> InitialRegistryUrls;
+TMap<FString, TArray<FString>> InitialRegistryScopes;
+
 void SUPMWindow::Construct(const FArguments& InArgs)
 {
 	Package = FUPMPluginModule::LoadedPackage;
@@ -13,6 +17,7 @@ void SUPMWindow::Construct(const FArguments& InArgs)
 	RegistryBoxes.Empty();
 	SelectedRegistryName = "";
 
+	StoreInitialValues();
 	if (Package.IsValid())
 	{
 		Items.Add(MakeShareable(new FString(FString::Printf(TEXT("Name: %s"), *Package->Name))));
@@ -30,74 +35,63 @@ void SUPMWindow::Construct(const FArguments& InArgs)
 	}
 
 	ChildSlot
-[
-	SNew(SVerticalBox)
-	+ SVerticalBox::Slot()
-	.AutoHeight()
-	.Padding(5)
 	[
-		SNew(STextBlock)
-		.Text(FText::FromString(TEXT("UPM Plugin Window")))
-	]
-	+ SVerticalBox::Slot()
-	.AutoHeight()
-	[
-		SNew(STextBlock)
-		.Text(FText::FromString("Package Information:"))
-	]
-	+ SVerticalBox::Slot()
-	.AutoHeight()
-	[
-		SNew(SListView<TSharedPtr<FString>>)
-		.ItemHeight(24)
-		.ListItemsSource(&Items)
-		.OnGenerateRow(this, &SUPMWindow::OnGenerateRowForList)
-	]
-	+ SVerticalBox::Slot()
-	.AutoHeight()
-	[
-		SNew(STextBlock)
-		.Text(FText::FromString("Registry Information:"))
-	]
-	+ SVerticalBox::Slot()
-	.FillHeight(1.0f)
-	[
-		SNew(SSplitter)
-		+ SSplitter::Slot()
-		.Value(0.3f)
+		SNew(SVerticalBox)
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(5)
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("UPM Plugin Window")))
+		]
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString("Package Information:"))
+		]
+		+ SVerticalBox::Slot()
+		.AutoHeight()
 		[
 			SNew(SListView<TSharedPtr<FString>>)
 			.ItemHeight(24)
-			.ListItemsSource(&RegistryNames)
-			.OnGenerateRow(this, &SUPMWindow::OnGenerateRowForRegistryNames)
+			.ListItemsSource(&Items)
+			.OnGenerateRow(this, &SUPMWindow::OnGenerateRowForList)
 		]
-		+ SSplitter::Slot()
-		.Value(0.7f)
+		+ SVerticalBox::Slot()
+		.Padding(0,10,0,0).AutoHeight()
 		[
-			SAssignNew(RegistryDetailsBox, SVerticalBox)
-			+ SVerticalBox::Slot()
-			.AutoHeight()
+			SNew(STextBlock)
+			.Text(FText::FromString("Registry Information:"))
+		]
+		+ SVerticalBox::Slot()
+		.Padding(0,10,0,0).FillHeight(1.0f)
+		[
+			SNew(SSplitter)
+			+ SSplitter::Slot()
+			.Value(0.3f)
 			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("Select a registry from the left to view details.")))
+				SNew(SListView<TSharedPtr<FString>>)
+				.ItemHeight(24)
+				.ListItemsSource(&RegistryNames)
+				.OnGenerateRow(this, &SUPMWindow::OnGenerateRowForRegistryNames)
+			]
+			+ SSplitter::Slot()
+			.Value(0.7f)
+			[
+				SAssignNew(RegistryDetailsBox, SVerticalBox)
+				+ SVerticalBox::Slot()
+				.Padding(15).AutoHeight()
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(TEXT("Select a registry from the left to view details.")))
+				]
 			]
 		]
-	]
-	+ SVerticalBox::Slot()
-	.AutoHeight()
-	[
-		SNew(SButton)
-		.Text(FText::FromString("Save Scopes"))
-		.OnClicked(this, &SUPMWindow::OnSaveScopesClicked)
-	]
-];
+
+	];
 }
 
-FReply SUPMWindow::OnButtonClicked(int32 ButtonNumber)
-{
-	UE_LOG(LogTemp, Log, TEXT("Button %d clicked!"), ButtonNumber);
-	return FReply::Handled();
-}
 
 TSharedRef<ITableRow> SUPMWindow::OnGenerateRowForList(TSharedPtr<FString> Item,
                                                        const TSharedRef<STableViewBase>& OwnerTable)
@@ -109,12 +103,13 @@ TSharedRef<ITableRow> SUPMWindow::OnGenerateRowForList(TSharedPtr<FString> Item,
 }
 
 // Update the `OnGenerateRowForTextBox` method in `UPMWindow.cpp`
-TSharedRef<ITableRow> SUPMWindow::OnGenerateRowForTextBox(TSharedPtr<SWidget> Item, const TSharedRef<STableViewBase>& OwnerTable)
+TSharedRef<ITableRow> SUPMWindow::OnGenerateRowForTextBox(TSharedPtr<SWidget> Item,
+                                                          const TSharedRef<STableViewBase>& OwnerTable)
 {
 	return SNew(STableRow<TSharedPtr<SWidget>>, OwnerTable)
-	[
-		Item.ToSharedRef()
-	];
+		[
+			Item.ToSharedRef()
+		];
 }
 
 void SUPMWindow::OnRegistryNameTextCommitted(const FText& NewText, ETextCommit::Type CommitType, FString OldName)
@@ -156,12 +151,13 @@ void SUPMWindow::OnScopeTextCommitted(const FText& NewText, ETextCommit::Type Co
 	}
 }
 
-TSharedRef<ITableRow> SUPMWindow::OnGenerateRowForRegistry(TSharedPtr<SVerticalBox> Item, const TSharedRef<STableViewBase>& OwnerTable)
+TSharedRef<ITableRow> SUPMWindow::OnGenerateRowForRegistry(TSharedPtr<SVerticalBox> Item,
+                                                           const TSharedRef<STableViewBase>& OwnerTable)
 {
 	return SNew(STableRow<TSharedPtr<SVerticalBox>>, OwnerTable)
-	[
-		Item.ToSharedRef()
-	];
+		[
+			Item.ToSharedRef()
+		];
 }
 
 FReply SUPMWindow::OnSaveScopesClicked()
@@ -173,82 +169,140 @@ FReply SUPMWindow::OnSaveScopesClicked()
 
 FReply SUPMWindow::OnRegistryButtonClicked(FString RegistryName)
 {
-    SelectedRegistryName = RegistryName;
+	if (RegistryName != SelectedRegistryName)
+	{
+		ResetFields();
+	}
 
-    RegistryDetailsBox->ClearChildren();
+	SelectedRegistryName = RegistryName;
 
-  for (const auto& Registry : Package->ScopedRegistries)
-    {
-        if (Registry.Name == SelectedRegistryName)
-        {
-            RegistryDetailsBox->AddSlot()
-            .AutoHeight()
-            [
-                SNew(SHorizontalBox)
-                + SHorizontalBox::Slot()
-                .AutoWidth()
-                [
-                    SNew(STextBlock)
-                    .Text(FText::FromString(TEXT("Registry Name:")))
-                ]
-                + SHorizontalBox::Slot()
-                .FillWidth(1.0f)
-                [
-                    SNew(SEditableTextBox)
-                    .Text(FText::FromString(Registry.Name))
-                    .OnTextCommitted(this, &SUPMWindow::OnRegistryNameTextCommitted, Registry.Name)
-                ]
-            ];
+	RegistryDetailsBox->ClearChildren();
 
-            RegistryDetailsBox->AddSlot()
-            .AutoHeight()
-            [
-                SNew(SHorizontalBox)
-                + SHorizontalBox::Slot()
-                .AutoWidth()
-                [
-                    SNew(STextBlock)
-                    .Text(FText::FromString(TEXT("Registry URL:")))
-                ]
-                + SHorizontalBox::Slot()
-                .FillWidth(1.0f)
-                [
-                    SNew(SEditableTextBox)
-                    .Text(FText::FromString(Registry.Url))
-                    .OnTextCommitted(this, &SUPMWindow::OnRegistryUrlTextCommitted, Registry.Name)
-                ]
-            ];
+	for (const auto& Registry : Package->ScopedRegistries)
+	{
+		if (Registry.Name == SelectedRegistryName)
+		{
+			RegistryDetailsBox->AddSlot()
+			                  .AutoHeight()
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(TEXT("Registry Name:")))
+				]
+				+ SHorizontalBox::Slot()
+				.FillWidth(1.0f)
+				[
+					SNew(SEditableTextBox)
+					.Text(FText::FromString(Registry.Name))
+					.OnTextCommitted(this, &SUPMWindow::OnRegistryNameTextCommitted, Registry.Name)
+				]
+			];
 
-            RegistryDetailsBox->AddSlot()
-            .AutoHeight()
-            [
-                SNew(STextBlock)
-                .Text(FText::FromString(TEXT("Scopes:")))
-            ];
+			RegistryDetailsBox->AddSlot()
+			                  .AutoHeight()
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					SNew(STextBlock)
+					.Text(FText::FromString(TEXT("Registry URL:")))
+				]
+				+ SHorizontalBox::Slot()
+				.FillWidth(1.0f)
+				[
+					SNew(SEditableTextBox)
+					.Text(FText::FromString(Registry.Url))
+					.OnTextCommitted(this, &SUPMWindow::OnRegistryUrlTextCommitted, Registry.Name)
+				]
+			];
 
-            for (const auto& Scope : Registry.Scopes)
-            {
-                RegistryDetailsBox->AddSlot()
-                .AutoHeight()
-                [
-                    SNew(SEditableTextBox)
-                    .Text(FText::FromString(*Scope))
-                    .OnTextCommitted(this, &SUPMWindow::OnScopeTextCommitted, Registry.Name, Scope)
-                ];
-            }
-            break;
-        }
-    }
+			RegistryDetailsBox->AddSlot()
+			                  .AutoHeight()
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT("Scopes:")))
+			];
 
-    return FReply::Handled();
+			for (const auto& Scope : Registry.Scopes)
+			{
+				RegistryDetailsBox->AddSlot()
+				                  .AutoHeight()
+				[
+					SNew(SEditableTextBox)
+					.Text(FText::FromString(*Scope))
+					.OnTextCommitted(this, &SUPMWindow::OnScopeTextCommitted, Registry.Name, Scope)
+				];
+			}
+
+			RegistryDetailsBox->AddSlot()
+			                  .AutoHeight()
+			[
+				SNew(SButton)
+				.Text(FText::FromString("Save Scopes"))
+				.OnClicked(this, &SUPMWindow::OnSaveScopesClicked)
+			];
+			break;
+		}
+	}
+
+	return FReply::Handled();
 }
 
-TSharedRef<ITableRow> SUPMWindow::OnGenerateRowForRegistryNames(TSharedPtr<FString> Item, const TSharedRef<STableViewBase>& OwnerTable)
+TSharedRef<ITableRow> SUPMWindow::OnGenerateRowForRegistryNames(TSharedPtr<FString> Item,
+                                                                const TSharedRef<STableViewBase>& OwnerTable)
 {
 	return SNew(STableRow<TSharedPtr<FString>>, OwnerTable)
-	[
-		SNew(SButton)
-		.Text(FText::FromString(*Item))
-		.OnClicked(this, &SUPMWindow::OnRegistryButtonClicked, *Item)
-	];
+		[
+			SNew(SButton)
+			.Text(FText::FromString(*Item))
+			.OnClicked(this, &SUPMWindow::OnRegistryButtonClicked, *Item)
+		];
+}
+
+// Method to store initial values
+void SUPMWindow::StoreInitialValues()
+{
+	InitialRegistryNames.Empty();
+	InitialRegistryUrls.Empty();
+	InitialRegistryScopes.Empty();
+
+	for (const auto& Registry : Package->ScopedRegistries)
+	{
+		InitialRegistryNames.Add(Registry.Name, Registry.Name);
+		InitialRegistryUrls.Add(Registry.Name, Registry.Url);
+		InitialRegistryScopes.Add(Registry.Name, Registry.Scopes);
+	}
+}
+
+// Method to reset fields to initial values
+void SUPMWindow::ResetFields()
+{
+	for (auto& Registry : Package->ScopedRegistries)
+	{
+		if (InitialRegistryNames.Contains(Registry.Name))
+		{
+			Registry.Name = InitialRegistryNames[Registry.Name];
+		}
+		if (InitialRegistryUrls.Contains(Registry.Name))
+		{
+			Registry.Url = InitialRegistryUrls[Registry.Name];
+		}
+		if (InitialRegistryScopes.Contains(Registry.Name))
+		{
+			Registry.Scopes = InitialRegistryScopes[Registry.Name];
+		}
+	}
+
+	// Refresh the UI to reflect the reset values
+	OnRegistryButtonClicked(SelectedRegistryName);
+}
+
+// Call the reset method on tab change
+void SUPMWindow::OnTabChanged()
+{
+	ResetFields();
 }

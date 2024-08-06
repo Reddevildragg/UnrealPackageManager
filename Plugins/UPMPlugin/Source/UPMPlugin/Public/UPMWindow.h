@@ -10,6 +10,9 @@ public:
 	SLATE_BEGIN_ARGS(SUPMWindow) {}
 	SLATE_END_ARGS()
 
+	void StoreInitialValues();
+	void ResetFields();
+	void OnTabChanged();
 	void Construct(const FArguments& InArgs);
 
 private:
@@ -32,6 +35,4 @@ private:
 	                          FString OldScope);
 	FReply OnSaveScopesClicked();
 	FReply OnRegistryButtonClicked(FString RegistryName);
-
-	FReply OnButtonClicked(int32 ButtonNumber);
 };
