@@ -1,0 +1,17 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "UPM Plugin",
+	"Description": "A custom plugin to create a standalone window with buttons.",
+	"Category": "Other",
+	"CreatedBy": "Your Name",
+	"CreatedByURL": "http://yourwebsite.com",
+	"Modules": [
+		{
+			"Name": "UPMPlugin",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}

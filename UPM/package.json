@@ -1,0 +1,9 @@
+{
+	"name": "UPM Plugin Package",
+	"version": "1.0.0",
+	"dependencies":
+	{
+		"fs-extra": "^11.2.0",
+		"vue-router": "^4.4.2"
+	}
+}
