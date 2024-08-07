@@ -1,67 +1,88 @@
 ﻿#include "PackageManagerInstall.h"
+#include "UPMPackage.h"
 #include "Widgets/Input/SButton.h"
 #include "Misc/MonitoredProcess.h"
 #include "IPythonScriptPlugin.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
+#include "Dom/JsonObject.h"
+#include "Serialization/JsonReader.h"
+#include "Serialization/JsonSerializer.h"
 
 void SPackageManagerInstall::Construct(const FArguments& InArgs)
 {
-	ChildSlot
-	[
-		SNew(SButton)
-		.Text(FText::FromString("Run Python Script"))
-		.OnClicked(this, &SPackageManagerInstall::OnRunPythonScript)
-	];
+    ParentWindow = InArgs._ParentWindow;
+    PackageData = InArgs._PackageData;
+
+    ChildSlot
+    [
+        SNew(SButton)
+        .Text(FText::FromString("Run Python Script"))
+        .OnClicked(this, &SPackageManagerInstall::OnRunPythonScript)
+    ];
 }
 
 FReply SPackageManagerInstall::OnRunPythonScript()
 {
-	IPythonScriptPlugin* PythonPlugin = IPythonScriptPlugin::Get();
+    IPythonScriptPlugin* PythonPlugin = IPythonScriptPlugin::Get();
 
-	if (PythonPlugin)
-	{
-		TArray<FString> Scopes = { TEXT("@greener-games"), TEXT("@greener-games"), TEXT("@greener-games") };
-		TArray<TSharedPtr<FJsonValue>> CombinedJsonArray;
+    if (PythonPlugin)
+    {
+        TSharedPtr<FJsonObject> MasterJsonObject = MakeShareable(new FJsonObject);
 
-		for (const FString& Scope : Scopes)
+        // Extract scoped registries from PackageData
+        const TArray<FScopedRegistry>& ScopedRegistries = PackageData->ScopedRegistries;
+        if (ScopedRegistries.Num() > 0)
         {
-            FString ScriptPath = FPaths::ProjectPluginsDir() / TEXT("UPMPlugin/my_script.py");
-            FString NpmCommand = FString::Printf(TEXT("search %s --json"), *Scope);
-            FString Command = FString::Printf(TEXT("%s %s"), *ScriptPath, *NpmCommand);
-
-            if (PythonPlugin->ExecPythonCommand(*Command))
+            for (const FScopedRegistry& Registry : ScopedRegistries)
             {
-                FString NpmOutput;
-                FString AppDataPath = FPlatformMisc::GetEnvironmentVariable(TEXT("APPDATA"));
-                FString OutputFilePath = AppDataPath / TEXT("MyApp/npm_output.txt");
+                TSharedPtr<FJsonObject> RegistryJsonObject = MakeShareable(new FJsonObject);
+                const TArray<FString>& Scopes = Registry.Scopes;
 
-                if (FFileHelper::LoadFileToString(NpmOutput, *OutputFilePath))
+                for (const FString& Scope : Scopes)
                 {
-                    TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(NpmOutput);
-                    TArray<TSharedPtr<FJsonValue>> JsonArray;
-                    if (FJsonSerializer::Deserialize(Reader, JsonArray))
+                    FString ScriptPath = FPaths::ProjectPluginsDir() / TEXT("UPMPlugin/my_script.py");
+                    FString NpmCommand = FString::Printf(TEXT("search %s --json --registry=%s"), *Scope, *Registry.Url);
+                    FString Command = FString::Printf(TEXT("%s %s"), *ScriptPath, *NpmCommand);
+
+                    if (PythonPlugin->ExecPythonCommand(*Command))
                     {
-                        CombinedJsonArray.Append(JsonArray);
+                        FString NpmOutput;
+                        FString AppDataPath = FPlatformMisc::GetEnvironmentVariable(TEXT("APPDATA"));
+                        FString OutputFilePath = AppDataPath / TEXT("MyApp/npm_output.txt");
+
+                        if (FFileHelper::LoadFileToString(NpmOutput, *OutputFilePath))
+                        {
+                            TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(NpmOutput);
+                            TArray<TSharedPtr<FJsonValue>> JsonArray;
+                            if (FJsonSerializer::Deserialize(Reader, JsonArray))
+                            {
+                                RegistryJsonObject->SetArrayField(Scope, JsonArray);
+                            }
+                            else
+                            {
+                                UE_LOG(LogTemp, Error, TEXT("Failed to parse JSON output for scope: %s"), *Scope);
+                            }
+                        }
+                        else
+                        {
+                            UE_LOG(LogTemp, Error, TEXT("Failed to read npm_output.txt for scope: %s"), *Scope);
+                        }
                     }
                     else
                     {
-                        UE_LOG(LogTemp, Error, TEXT("Failed to parse JSON output for scope: %s"), *Scope);
+                        UE_LOG(LogTemp, Error, TEXT("Failed to execute Python script for scope: %s"), *Scope);
                     }
                 }
-                else
-                {
-                    UE_LOG(LogTemp, Error, TEXT("Failed to read npm_output.txt for scope: %s"), *Scope);
-                }
-            }
-            else
-            {
-                UE_LOG(LogTemp, Error, TEXT("Failed to execute Python script for scope: %s"), *Scope);
+
+                MasterJsonObject->SetObjectField(Registry.Name, RegistryJsonObject);
             }
         }
 
-        // Serialize the combined JSON array to a string
+        // Serialize the master JSON object to a string
         FString CombinedOutput;
         TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&CombinedOutput);
-        FJsonSerializer::Serialize(CombinedJsonArray, Writer);
+        FJsonSerializer::Serialize(MasterJsonObject.ToSharedRef(), Writer);
 
         // Write the combined output to a file
         FString CombinedOutputFilePath = FPlatformMisc::GetEnvironmentVariable(TEXT("APPDATA")) / TEXT("MyApp/combined_output.json");
@@ -79,12 +100,5 @@ FReply SPackageManagerInstall::OnRunPythonScript()
         UE_LOG(LogTemp, Error, TEXT("Python Plugin not found."));
     }
 
-	return FReply::Handled();
-}
-
-FString ReadPythonScriptOutput()
-{
-	FString Result;
-	FFileHelper::LoadFileToString(Result, TEXT("result.txt"));
-	return Result;
+    return FReply::Handled();
 }

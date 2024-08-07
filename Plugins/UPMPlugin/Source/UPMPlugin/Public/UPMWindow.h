@@ -20,7 +20,7 @@ private:
 	TSharedPtr<UUPMPackage> Package;
 
 	//Menu Items
-	TSharedPtr<SPackageManagerInstall> Layout2;
+	TSharedPtr<SPackageManagerInstall> InstallLayout;
 	TSharedPtr<SPackageManagerSettings> SettingsLayout;
 
 	TSharedPtr<SWidget> CurrentLayout;

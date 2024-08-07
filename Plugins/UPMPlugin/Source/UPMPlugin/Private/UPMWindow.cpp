@@ -12,7 +12,7 @@ void SUPMWindow::Construct(const FArguments& InArgs)
 
 	// Create Layout1 and Layout2 widgets
 	SettingsLayout = SNew(SPackageManagerSettings).ParentWindow(SharedThis(this)).PackageData(Package);
-	Layout2 = SNew(SPackageManagerInstall);
+	InstallLayout = SNew(SPackageManagerInstall).ParentWindow(SharedThis(this)).PackageData(Package);
 
 	// Create LayoutContainer to hold the layout switching part
 	LayoutContainer = SNew(SVerticalBox);
@@ -51,7 +51,7 @@ void SUPMWindow::UpdateMode(const FString& Str)
 	}
 	else
 	{
-		CurrentLayout = Layout2;
+		CurrentLayout = InstallLayout;
 	}
 
 	// Clear existing children of LayoutContainer

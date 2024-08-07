@@ -1,25 +1,12 @@
 {
 	"name": "UPM Plugin Package",
 	"version": "1.0.0",
-	"dependencies":
-	{
-		"fs-extra": "^11.2.0",
-		"vue-router": "^4.4.2"
-	},
 	"scopedRegistries": [
 		{
-			"name": "Atkins",
-			"url": "https://npm.pkg.jetbrains.space/atkinscreativedesign/p/package-server/atkins",
-			"scopes": [
-				"com.atkins"
-			]
-		},
-		{
 			"name": "Assets",
-			"url": "https://npm.pkg.jetbrains.space/atkinscreativedesign/p/package-server/assets",
+			"url": "https://cd-package-server-verdaccio.bdjijg.easypanel.host/",
 			"scopes": [
-				"unity.assetstore",
-				"com.joshclose"
+				"@creative-design-web",
 			]
 		},
 		{
@@ -37,8 +24,7 @@
 				"com.guerrillacontra",
 				"com.marijnzwemmer",
 				"com.joshclose.csvhelper",
-				"com.gkng",
-				"com."
+				"com.gkng"
 			]
 		}
 	]

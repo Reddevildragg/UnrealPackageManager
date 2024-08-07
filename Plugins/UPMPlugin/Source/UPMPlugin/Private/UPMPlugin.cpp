@@ -48,6 +48,11 @@ void FUPMPluginModule::ShutdownModule()
 
     FUPMCommands::Unregister();
     FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(UPMTabName);
+
+    if (LoadedPackage.IsValid())
+    {
+        LoadedPackage = nullptr;
+    }
 }
 
 TSharedRef<SDockTab> FUPMPluginModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)

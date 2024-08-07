@@ -1,5 +1,4 @@
 ﻿#include "PackageManagerSettings.h"
-
 #include "UPMPackage.h"
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/Input/SButton.h"

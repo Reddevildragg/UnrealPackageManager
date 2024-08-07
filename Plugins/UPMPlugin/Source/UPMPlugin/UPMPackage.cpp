@@ -45,6 +45,7 @@ UUPMPackage* UUPMPackage::FromJson(TSharedPtr<FJsonObject> JsonObject)
     return Package;
 }
 
+
 TSharedPtr<UUPMPackage> UUPMPackage::LoadOrCreatePackageJson()
 {
     FString ProjectDir = FPaths::ProjectDir();

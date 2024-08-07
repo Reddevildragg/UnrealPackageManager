@@ -14,7 +14,7 @@ output_file = os.path.join(appdata_dir, "npm_output.txt")
 log_file = os.path.join(appdata_dir, "script_log.txt")
 
 print("Starting subprocess...")
-result = subprocess.run([npm_path] + npm_command, capture_output=True, text=True, check=True)
+result = subprocess.run([npm_path] + npm_command, capture_output=True, text=True, check=True, creationflags=subprocess.CREATE_NO_WINDOW)
 output = result.stdout.strip()
 print(f"Command succeeded, output: {output}")
 
