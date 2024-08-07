@@ -1,118 +1,90 @@
 ﻿#include "PackageManagerInstall.h"
-#include "Widgets/Text/STextBlock.h"
 #include "Widgets/Input/SButton.h"
-#include "Misc/Paths.h"
-#include "HAL/PlatformProcess.h"
-#include "Dom/JsonObject.h"
-#include "Serialization/JsonSerializer.h"
-#include "Serialization/JsonReader.h"
-#include "Misc/Paths.h"
-#include "HAL/PlatformFilemanager.h"
 #include "Misc/MonitoredProcess.h"
+#include "IPythonScriptPlugin.h"
 
 void SPackageManagerInstall::Construct(const FArguments& InArgs)
 {
-	FString Result;
-	FString Error;
-	if (RunNpmCommand(TEXT("--version"), Result, Error))
-	{
-		UE_LOG(LogTemp, Log, TEXT("NPM Output: %s"), *Result);
-	}
-	else
-	{
-		UE_LOG(LogTemp, Error, TEXT("Failed to run npm command. Error: %s"), *Error);
-	}
-
 	ChildSlot
 	[
-		SNew(SVerticalBox)
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		[
-			SNew(STextBlock)
-			.Text(FText::FromString("This is Layout 2"))
-		]
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		[
-			SNew(SButton)
-			.Text(FText::FromString("Switch to Layout 1"))
-			.OnClicked_Lambda([]()
-			{
-				// You can use the function below for changing layouts or communicate with the parent widget
-				return FReply::Handled();
-			})
-		]
+		SNew(SButton)
+		.Text(FText::FromString("Run Python Script"))
+		.OnClicked(this, &SPackageManagerInstall::OnRunPythonScript)
 	];
 }
 
-bool SPackageManagerInstall::RunNpmCommand(const FString& Command, FString& OutResult, FString& OutError)
+FReply SPackageManagerInstall::OnRunPythonScript()
 {
-    // Define paths
-    FString PluginFolder = FPaths::Combine(FPaths::ProjectPluginsDir(), TEXT("UPMPlugin/Source")); // Adjust to your plugin folder path
-    FString BatchFilePath = FPaths::Combine(PluginFolder, TEXT("run_npm_command.bat"));
+	IPythonScriptPlugin* PythonPlugin = IPythonScriptPlugin::Get();
 
-    // Create a temp directory in the project directory
-    FString TempDir = FPaths::Combine(FPaths::ProjectDir(), TEXT("Temp"));
-    if (!IFileManager::Get().DirectoryExists(*TempDir))
+	if (PythonPlugin)
+	{
+		TArray<FString> Scopes = { TEXT("@greener-games"), TEXT("@greener-games"), TEXT("@greener-games") };
+		TArray<TSharedPtr<FJsonValue>> CombinedJsonArray;
+
+		for (const FString& Scope : Scopes)
+        {
+            FString ScriptPath = FPaths::ProjectPluginsDir() / TEXT("UPMPlugin/my_script.py");
+            FString NpmCommand = FString::Printf(TEXT("search %s --json"), *Scope);
+            FString Command = FString::Printf(TEXT("%s %s"), *ScriptPath, *NpmCommand);
+
+            if (PythonPlugin->ExecPythonCommand(*Command))
+            {
+                FString NpmOutput;
+                FString AppDataPath = FPlatformMisc::GetEnvironmentVariable(TEXT("APPDATA"));
+                FString OutputFilePath = AppDataPath / TEXT("MyApp/npm_output.txt");
+
+                if (FFileHelper::LoadFileToString(NpmOutput, *OutputFilePath))
+                {
+                    TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(NpmOutput);
+                    TArray<TSharedPtr<FJsonValue>> JsonArray;
+                    if (FJsonSerializer::Deserialize(Reader, JsonArray))
+                    {
+                        CombinedJsonArray.Append(JsonArray);
+                    }
+                    else
+                    {
+                        UE_LOG(LogTemp, Error, TEXT("Failed to parse JSON output for scope: %s"), *Scope);
+                    }
+                }
+                else
+                {
+                    UE_LOG(LogTemp, Error, TEXT("Failed to read npm_output.txt for scope: %s"), *Scope);
+                }
+            }
+            else
+            {
+                UE_LOG(LogTemp, Error, TEXT("Failed to execute Python script for scope: %s"), *Scope);
+            }
+        }
+
+        // Serialize the combined JSON array to a string
+        FString CombinedOutput;
+        TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&CombinedOutput);
+        FJsonSerializer::Serialize(CombinedJsonArray, Writer);
+
+        // Write the combined output to a file
+        FString CombinedOutputFilePath = FPlatformMisc::GetEnvironmentVariable(TEXT("APPDATA")) / TEXT("MyApp/combined_output.json");
+        if (FFileHelper::SaveStringToFile(CombinedOutput, *CombinedOutputFilePath))
+        {
+            UE_LOG(LogTemp, Log, TEXT("Combined output written to %s"), *CombinedOutputFilePath);
+        }
+        else
+        {
+            UE_LOG(LogTemp, Error, TEXT("Failed to write combined output to file"));
+        }
+    }
+    else
     {
-        IFileManager::Get().MakeDirectory(*TempDir);
+        UE_LOG(LogTemp, Error, TEXT("Python Plugin not found."));
     }
 
-    FString OutputFilePath = FPaths::Combine(TempDir, TEXT("npm_output.txt"));
-    FString ErrorFilePath = FPaths::Combine(TempDir, TEXT("npm_error.txt"));
+	return FReply::Handled();
+}
 
-	// Debugging: Log the file paths
-	UE_LOG(LogTemp, Log, TEXT("Batch File Path: %s"), *BatchFilePath);
-	UE_LOG(LogTemp, Log, TEXT("Output File Path: %s"), *OutputFilePath);
-	UE_LOG(LogTemp, Log, TEXT("Error File Path: %s"), *ErrorFilePath);
-
-    // Construct command arguments
-    FString CommandArgs = FString::Printf(TEXT("\"%s\" \"%s\" %s"), *OutputFilePath, *ErrorFilePath, *Command);
-
-	UE_LOG(LogTemp, Log, TEXT("Error File Path: %s"), *CommandArgs);
-
-    // Execute the batch file
-    FProcHandle ProcessHandle = FPlatformProcess::CreateProc(
-        *BatchFilePath,
-        *CommandArgs,
-        true,
-        false,
-        false,
-        nullptr,
-        0,
-        nullptr,
-        nullptr,
-        nullptr
-    );
-
-    if (!ProcessHandle.IsValid())
-    {
-        UE_LOG(LogTemp, Error, TEXT("Failed to execute batch file."));
-        return false;
-    }
-
-    // Wait for the batch file process to complete
-    FPlatformProcess::WaitForProc(ProcessHandle);
-
-    // Read the output and error files
-    if (!FFileHelper::LoadFileToString(OutResult, *OutputFilePath))
-    {
-        OutResult = TEXT("Failed to read output file.");
-    }
-    if (!FFileHelper::LoadFileToString(OutError, *ErrorFilePath))
-    {
-        OutError = TEXT("Failed to read error file.");
-    }
-
-    // Get the return code
-    int32 ReturnCode;
-    FPlatformProcess::GetProcReturnCode(ProcessHandle, &ReturnCode);
-
-    // Cleanup
-    FPlatformProcess::CloseProc(ProcessHandle);
-    //IFileManager::Get().Delete(*OutputFilePath);
-    //IFileManager::Get().Delete(*ErrorFilePath);
-
-    return (ReturnCode == 0);
+FString ReadPythonScriptOutput()
+{
+	FString Result;
+	FFileHelper::LoadFileToString(Result, TEXT("result.txt"));
+	return Result;
 }

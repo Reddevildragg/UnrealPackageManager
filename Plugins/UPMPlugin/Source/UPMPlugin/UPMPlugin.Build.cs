@@ -15,7 +15,8 @@ public class UPMPlugin : ModuleRules
 			{
 				"Core",
                 "Json",
-                "JsonUtilities"
+                "JsonUtilities",
+                "PythonScriptPlugin"
                 // ... add other public dependencies that you statically link with here ...
 			}
 		);
@@ -32,7 +33,7 @@ public class UPMPlugin : ModuleRules
 				"CoreUObject",
 				"Engine",
 				"Slate",
-				"SlateCore",
+				"SlateCore"
 				// ... add private dependencies that you statically link with here ...
 			}
 		);

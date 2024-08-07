@@ -12,4 +12,7 @@ public:
 	void Construct(const FArguments& InArgs);
 
 	bool RunNpmCommand(const FString& Command, FString& OutResult, FString& OutError);
+
+private:
+	FReply OnRunPythonScript();
 };

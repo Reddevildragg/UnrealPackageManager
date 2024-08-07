@@ -28,15 +28,7 @@
 			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/ba6ad0f2e5484c53baf97f1dc806a96c"
 		},
 		{
-			"Name": "Bob",
-			"Enabled": false
-		},
-		{
 			"Name": "UPM",
-			"Enabled": false
-		},
-		{
-			"Name": "temp",
 			"Enabled": false
 		}
 	]
