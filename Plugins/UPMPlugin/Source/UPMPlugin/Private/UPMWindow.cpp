@@ -1,6 +1,7 @@
 ﻿#include "UPMWindow.h"
 
 #include "UPMPlugin.h"
+#include "UPMPlugin/UPMTabNavigation.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/Input/SButton.h"
@@ -34,6 +35,13 @@ void SUPMWindow::Construct(const FArguments& InArgs)
 		}
 	}
 
+	// Create Layout1 and Layout2 widgets
+	SettingsLayout = SNew(SPackageManagerSettings);
+	Layout2 = SNew(SLayout2Widget);
+
+	// Create LayoutContainer to hold the layout switching part
+	LayoutContainer = SNew(SVerticalBox);
+
 	ChildSlot
 	[
 		SNew(SVerticalBox)
@@ -44,6 +52,19 @@ void SUPMWindow::Construct(const FArguments& InArgs)
 			SNew(STextBlock)
 			.Text(FText::FromString(TEXT("UPM Plugin Window")))
 		]
+
+		+ SVerticalBox::Slot()
+		.FillHeight(1.0f)
+		[
+			SNew(SUPMTabNavigation).ParentWindow(SharedThis(this)) // Pass the parent window reference
+		]
+
+		+ SVerticalBox::Slot()
+		.FillHeight(1.0f)
+		[
+			LayoutContainer.ToSharedRef()
+		]
+
 		+ SVerticalBox::Slot()
 		.AutoHeight()
 		[
@@ -59,13 +80,15 @@ void SUPMWindow::Construct(const FArguments& InArgs)
 			.OnGenerateRow(this, &SUPMWindow::OnGenerateRowForList)
 		]
 		+ SVerticalBox::Slot()
-		.Padding(0,10,0,0).AutoHeight()
+		.Padding(0, 10, 0, 0)
+		.AutoHeight()
 		[
 			SNew(STextBlock)
 			.Text(FText::FromString("Registry Information:"))
 		]
 		+ SVerticalBox::Slot()
-		.Padding(0,10,0,0).FillHeight(1.0f)
+		.Padding(0, 10, 0, 0)
+		.FillHeight(1.0f)
 		[
 			SNew(SSplitter)
 			+ SSplitter::Slot()
@@ -81,14 +104,14 @@ void SUPMWindow::Construct(const FArguments& InArgs)
 			[
 				SAssignNew(RegistryDetailsBox, SVerticalBox)
 				+ SVerticalBox::Slot()
-				.Padding(15).AutoHeight()
+				.Padding(15)
+				.AutoHeight()
 				[
 					SNew(STextBlock)
 					.Text(FText::FromString(TEXT("Select a registry from the left to view details.")))
 				]
 			]
 		]
-
 	];
 }
 
@@ -305,4 +328,26 @@ void SUPMWindow::ResetFields()
 void SUPMWindow::OnTabChanged()
 {
 	ResetFields();
+}
+
+void SUPMWindow::UpdateMode(const FString& Str)
+{
+	UE_LOG(LogTemp, Log, TEXT("Mode updated to: %s"), *Str);
+	if (FCString::Strcmp(*Str, TEXT("Settings")) == 0)
+	{
+		CurrentLayout = SettingsLayout;
+	}
+	else
+	{
+		CurrentLayout = Layout2;
+	}
+
+	// Clear existing children of LayoutContainer
+	LayoutContainer->ClearChildren();
+
+	// Add the current layout to the container
+	LayoutContainer->AddSlot()
+	[
+		CurrentLayout.ToSharedRef()
+	];
 }

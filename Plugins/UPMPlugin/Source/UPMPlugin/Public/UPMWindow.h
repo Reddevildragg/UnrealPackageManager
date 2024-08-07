@@ -1,7 +1,10 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
+#include "UPMPlugin/Layout2Widget.h"
+#include "UPMPlugin/PackageManagerSettings.h"
 #include "UPMPlugin/UPMPackage.h"
+#include "UPMPlugin/UPMTabNavigation.h"
 #include "Widgets/SCompoundWidget.h"
 
 class SUPMWindow : public SCompoundWidget
@@ -15,6 +18,8 @@ public:
 	void OnTabChanged();
 	void Construct(const FArguments& InArgs);
 
+	void UpdateMode(const FString& Str);
+
 private:
 	TSharedPtr<UUPMPackage> Package;
 	TArray<TSharedPtr<FString>> Items;
@@ -23,6 +28,10 @@ private:
 	FString SelectedRegistryName;
 	TArray<TSharedPtr<FString>> RegistryNames;
 	TSharedPtr<SVerticalBox> RegistryDetailsBox;
+
+	//Menu Items
+	TSharedPtr<SLayout2Widget> Layout2;
+	TSharedPtr<SPackageManagerSettings> SettingsLayout;
 
 	TSharedRef<ITableRow> OnGenerateRowForList(TSharedPtr<FString> Item, const TSharedRef<STableViewBase>& OwnerTable);
     TSharedRef<ITableRow> OnGenerateRowForTextBox(TSharedPtr<SWidget> Item, const TSharedRef<STableViewBase>& OwnerTable);
@@ -35,4 +44,9 @@ private:
 	                          FString OldScope);
 	FReply OnSaveScopesClicked();
 	FReply OnRegistryButtonClicked(FString RegistryName);
+
+	TSharedPtr<SWidget> CurrentLayout;
+	TSharedPtr<SVerticalBox> LayoutContainer;
+
+
 };
