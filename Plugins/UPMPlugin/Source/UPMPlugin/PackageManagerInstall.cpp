@@ -369,13 +369,37 @@ FReply SPackageManagerInstall::OnAssetButtonClicked(FString AssetName)
                     ];
                 }
 
-            	// Add the "Install" button
-            	AssetInformationBox->AddSlot().AutoHeight()
-				[
-					SNew(SButton)
-					.Text(FText::FromString("Install"))
-					.OnClicked(this, &SPackageManagerInstall::OnInstallButtonClicked)
-				];
+            	FString PackageName = AssetObject->GetStringField("name");
+            	FString PluginsDir = FPaths::ProjectPluginsDir();
+            	FString NodeModulesPath = FPaths::Combine(PluginsDir, TEXT("node_modules"), PackageName);
+            	FString PluginPath = FPaths::Combine(PluginsDir, PackageName);
+
+            	if (FPaths::DirectoryExists(NodeModulesPath))
+            	{
+            		AssetInformationBox->AddSlot().AutoHeight()
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString("Already installed in node_modules"))
+					];
+            	}
+            	else if (FPaths::DirectoryExists(PluginPath))
+            	{
+            		AssetInformationBox->AddSlot().AutoHeight()
+					[
+						SNew(STextBlock)
+						.Text(FText::FromString("Already installed in plugins"))
+					];
+            	}
+            	else
+            	{
+            		// Add the "Install" button
+            		AssetInformationBox->AddSlot().AutoHeight()
+					[
+						SNew(SButton)
+						.Text(FText::FromString("Install"))
+						.OnClicked(this, &SPackageManagerInstall::OnInstallButtonClicked)
+					];
+            	}
             }
         }
     }
