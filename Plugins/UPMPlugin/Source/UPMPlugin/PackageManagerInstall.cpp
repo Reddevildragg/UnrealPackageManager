@@ -88,87 +88,95 @@ void SPackageManagerInstall::Construct(const FArguments& InArgs)
 
 FReply SPackageManagerInstall::FetchPackageInformation()
 {
-	IPythonScriptPlugin* PythonPlugin = IPythonScriptPlugin::Get();
+    IPythonScriptPlugin* PythonPlugin = IPythonScriptPlugin::Get();
 
-	if (PythonPlugin)
-	{
-		TSharedPtr<FJsonObject> MasterJsonObject = MakeShareable(new FJsonObject);
+    if (PythonPlugin)
+    {
+        TSharedPtr<FJsonObject> MasterJsonObject = MakeShareable(new FJsonObject);
 
-		// Extract scoped registries from PackageData
-		const TArray<FScopedRegistry>& ScopedRegistries = PackageData->ScopedRegistries;
-		if (ScopedRegistries.Num() > 0)
-		{
-			for (const FScopedRegistry& Registry : ScopedRegistries)
-			{
-				TSharedPtr<FJsonObject> RegistryJsonObject = MakeShareable(new FJsonObject);
-				const TArray<FString>& Scopes = Registry.Scopes;
+        // Extract scoped registries from PackageData
+        const TArray<FScopedRegistry>& ScopedRegistries = PackageData->ScopedRegistries;
+        if (ScopedRegistries.Num() > 0)
+        {
+            for (const FScopedRegistry& Registry : ScopedRegistries)
+            {
+                TSharedPtr<FJsonObject> RegistryJsonObject = MakeShareable(new FJsonObject);
+                const TArray<FString>& Scopes = Registry.Scopes;
 
-				for (const FString& Scope : Scopes)
-				{
-					FString ScriptPath = FPaths::ProjectPluginsDir() / TEXT("UPMPlugin/my_script.py");
-					FString NpmCommand = FString::Printf(TEXT("search %s --json --registry=%s"), *Scope, *Registry.Url);
-					FString Command = FString::Printf(TEXT("%s %s"), *ScriptPath, *NpmCommand);
+                // Save the name and URL of the registry inside a meta tag
+                TSharedPtr<FJsonObject> MetaJsonObject = MakeShareable(new FJsonObject);
+                MetaJsonObject->SetStringField(TEXT("name"), Registry.Name);
+                MetaJsonObject->SetStringField(TEXT("url"), Registry.Url);
+                RegistryJsonObject->SetObjectField(TEXT("meta"), MetaJsonObject);
 
-					if (PythonPlugin->ExecPythonCommand(*Command))
-					{
-						FString NpmOutput;
-						FString AppDataPath = FPlatformMisc::GetEnvironmentVariable(TEXT("APPDATA"));
-						FString OutputFilePath = AppDataPath / TEXT("MyApp/npm_output.txt");
+                // Save all scope information inside a scopes tag
+                TSharedPtr<FJsonObject> ScopesJsonObject = MakeShareable(new FJsonObject);
+                for (const FString& Scope : Scopes)
+                {
+                    FString ScriptPath = FPaths::ProjectPluginsDir() / TEXT("UPMPlugin/my_script.py");
+                    FString NpmCommand = FString::Printf(TEXT("search %s --json --registry=%s"), *Scope, *Registry.Url);
+                    FString Command = FString::Printf(TEXT("%s %s"), *ScriptPath, *NpmCommand);
 
-						if (FFileHelper::LoadFileToString(NpmOutput, *OutputFilePath))
-						{
-							TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(NpmOutput);
-							TArray<TSharedPtr<FJsonValue>> JsonArray;
-							if (FJsonSerializer::Deserialize(Reader, JsonArray))
-							{
-								RegistryJsonObject->SetArrayField(Scope, JsonArray);
-							}
-							else
-							{
-								UE_LOG(LogTemp, Error, TEXT("Failed to parse JSON output for scope: %s"), *Scope);
-							}
-						}
-						else
-						{
-							UE_LOG(LogTemp, Error, TEXT("Failed to read npm_output.txt for scope: %s"), *Scope);
-						}
-					}
-					else
-					{
-						UE_LOG(LogTemp, Error, TEXT("Failed to execute Python script for scope: %s"), *Scope);
-					}
-				}
+                    if (PythonPlugin->ExecPythonCommand(*Command))
+                    {
+                        FString NpmOutput;
+                        FString AppDataPath = FPlatformMisc::GetEnvironmentVariable(TEXT("APPDATA"));
+                        FString OutputFilePath = AppDataPath / TEXT("MyApp/npm_output.txt");
 
-				MasterJsonObject->SetObjectField(Registry.Name, RegistryJsonObject);
-			}
-		}
+                        if (FFileHelper::LoadFileToString(NpmOutput, *OutputFilePath))
+                        {
+                            TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(NpmOutput);
+                            TArray<TSharedPtr<FJsonValue>> JsonArray;
+                            if (FJsonSerializer::Deserialize(Reader, JsonArray))
+                            {
+                                ScopesJsonObject->SetArrayField(Scope, JsonArray);
+                            }
+                            else
+                            {
+                                UE_LOG(LogTemp, Error, TEXT("Failed to parse JSON output for scope: %s"), *Scope);
+                            }
+                        }
+                        else
+                        {
+                            UE_LOG(LogTemp, Error, TEXT("Failed to read npm_output.txt for scope: %s"), *Scope);
+                        }
+                    }
+                    else
+                    {
+                        UE_LOG(LogTemp, Error, TEXT("Failed to execute Python script for scope: %s"), *Scope);
+                    }
+                }
 
-		// Serialize the master JSON object to a string
-		FString CombinedOutput;
-		TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&CombinedOutput);
-		FJsonSerializer::Serialize(MasterJsonObject.ToSharedRef(), Writer);
+                RegistryJsonObject->SetObjectField(TEXT("scopes"), ScopesJsonObject);
+                MasterJsonObject->SetObjectField(Registry.Name, RegistryJsonObject);
+            }
+        }
 
-		// Write the combined output to a file
-		FString CombinedOutputFilePath = FPlatformMisc::GetEnvironmentVariable(TEXT("APPDATA")) / TEXT(
-			"MyApp/combined_output.json");
-		if (FFileHelper::SaveStringToFile(CombinedOutput, *CombinedOutputFilePath))
-		{
-			UE_LOG(LogTemp, Log, TEXT("Combined output written to %s"), *CombinedOutputFilePath);
+        // Serialize the master JSON object to a string
+        FString CombinedOutput;
+        TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&CombinedOutput);
+        FJsonSerializer::Serialize(MasterJsonObject.ToSharedRef(), Writer);
 
-			// Load the combined output file to create buttons
-			LoadCombinedOutput();
-		}
-		else
-		{
-			UE_LOG(LogTemp, Error, TEXT("Failed to write combined output to file"));
-		}
-	}
-	else
-	{
-		UE_LOG(LogTemp, Error, TEXT("Python Plugin not found."));
-	}
+        // Write the combined output to a file
+        FString CombinedOutputFilePath = FPlatformMisc::GetEnvironmentVariable(TEXT("APPDATA")) / TEXT("MyApp/combined_output.json");
+        if (FFileHelper::SaveStringToFile(CombinedOutput, *CombinedOutputFilePath))
+        {
+            UE_LOG(LogTemp, Log, TEXT("Combined output written to %s"), *CombinedOutputFilePath);
 
-	return FReply::Handled();
+            // Load the combined output file to create buttons
+            LoadCombinedOutput();
+        }
+        else
+        {
+            UE_LOG(LogTemp, Error, TEXT("Failed to write combined output to file"));
+        }
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("Python Plugin not found."));
+    }
+
+    return FReply::Handled();
 }
 
 void SPackageManagerInstall::LoadCombinedOutput()
@@ -193,15 +201,18 @@ void SPackageManagerInstall::GenerateRegistryButtons()
 
         for (const auto& RegistryEntry : LoadedData->Values)
         {
-            const FString& RegistryName = RegistryEntry.Key;
             TSharedPtr<FJsonObject> RegistryObject = RegistryEntry.Value->AsObject();
+            TSharedPtr<FJsonObject> MetaObject = RegistryObject->GetObjectField(TEXT("meta"));
+            FString RegistryName = MetaObject->GetStringField(TEXT("name"));
 
             bool bHasValidScope = false;
 
-            for (const auto& ScopeEntry : RegistryObject->Values)
+            // Access the scopes tag within the RegistryObject
+            TSharedPtr<FJsonObject> ScopesObject = RegistryObject->GetObjectField(TEXT("scopes"));
+            for (const auto& ScopeEntry : ScopesObject->Values)
             {
                 const TArray<TSharedPtr<FJsonValue>>* AssetsArray;
-                if (RegistryObject->TryGetArrayField(ScopeEntry.Key, AssetsArray) && AssetsArray->Num() > 0)
+                if (ScopesObject->TryGetArrayField(ScopeEntry.Key, AssetsArray) && AssetsArray->Num() > 0)
                 {
                     bHasValidScope = true;
                     break;
@@ -214,7 +225,7 @@ void SPackageManagerInstall::GenerateRegistryButtons()
                 [
                     SNew(SButton)
                     .Text(FText::FromString(*RegistryName))
-                	.ButtonColorAndOpacity(this, &SPackageManagerInstall::GetRegistryButtonColor, RegistryName) // Apply highlight effect
+                    .ButtonColorAndOpacity(this, &SPackageManagerInstall::GetRegistryButtonColor, RegistryName) // Apply highlight effect
                     .OnClicked_Lambda([this, RegistryName]()
                     {
                         return OnRegistryButtonClicked(RegistryName);
@@ -227,44 +238,46 @@ void SPackageManagerInstall::GenerateRegistryButtons()
 
 FReply SPackageManagerInstall::OnRegistryButtonClicked(FString RegistryName)
 {
-	SelectedRegistryName = RegistryName; // Set the selected registry name
+    SelectedRegistryName = RegistryName; // Set the selected registry name
 
-	// Clear the ScopeSelectBox before adding new buttons
-	if (ScopeSelectBox.IsValid())
-	{
-		ScopeSelectBox->ClearChildren();
+    // Clear the ScopeSelectBox before adding new buttons
+    if (ScopeSelectBox.IsValid())
+    {
+        ScopeSelectBox->ClearChildren();
 
-		// Find the selected registry in the loaded data
-		if (LoadedData.IsValid())
-		{
-			SelectedRegistryObject = LoadedData->GetObjectField(RegistryName);
-			if (SelectedRegistryObject.IsValid())
-			{
-				for (const auto& ScopeEntry : SelectedRegistryObject->Values)
-				{
-					const FString& Scope = ScopeEntry.Key;
-					const TArray<TSharedPtr<FJsonValue>>* AssetsArray;
+        // Find the selected registry in the loaded data
+        if (LoadedData.IsValid())
+        {
+            SelectedRegistryObject = LoadedData->GetObjectField(RegistryName);
+            if (SelectedRegistryObject.IsValid())
+            {
+                // Access the scopes tag within the SelectedRegistryObject
+                TSharedPtr<FJsonObject> ScopesObject = SelectedRegistryObject->GetObjectField(TEXT("scopes"));
+                for (const auto& ScopeEntry : ScopesObject->Values)
+                {
+                    const FString& Scope = ScopeEntry.Key;
+                    const TArray<TSharedPtr<FJsonValue>>* AssetsArray;
 
-					// Check if the scope has a non-empty array of assets
-					if (SelectedRegistryObject->TryGetArrayField(Scope, AssetsArray) && AssetsArray->Num() > 0)
-					{
-						ScopeSelectBox->AddSlot().AutoHeight()
-						[
-							SNew(SButton)
-							.Text(FText::FromString(Scope))
-							.ButtonColorAndOpacity(this, &SPackageManagerInstall::GetScopeButtonColor, Scope) // Apply highlight effect
-							.OnClicked_Lambda([this, Scope]()
-							{
-								return OnScopeButtonClicked(Scope);
-							})
-						];
-					}
-				}
-			}
-		}
-	}
+                    // Check if the scope has a non-empty array of assets
+                    if (ScopesObject->TryGetArrayField(Scope, AssetsArray) && AssetsArray->Num() > 0)
+                    {
+                        ScopeSelectBox->AddSlot().AutoHeight()
+                        [
+                            SNew(SButton)
+                            .Text(FText::FromString(Scope))
+                            .ButtonColorAndOpacity(this, &SPackageManagerInstall::GetScopeButtonColor, Scope) // Apply highlight effect
+                            .OnClicked_Lambda([this, Scope]()
+                            {
+                                return OnScopeButtonClicked(Scope);
+                            })
+                        ];
+                    }
+                }
+            }
+        }
+    }
 
-	return FReply::Handled();
+    return FReply::Handled();
 }
 
 FReply SPackageManagerInstall::OnScopeButtonClicked(FString ScopeName)
@@ -280,7 +293,8 @@ FReply SPackageManagerInstall::OnScopeButtonClicked(FString ScopeName)
 		// Find the selected scope in the loaded data
 		if (SelectedRegistryObject.IsValid())
 		{
-			SelectedScopeObject = SelectedRegistryObject->GetArrayField(ScopeName);
+			TSharedPtr<FJsonObject> ScopesObject = SelectedRegistryObject->GetObjectField(TEXT("scopes"));
+			SelectedScopeObject = ScopesObject->GetArrayField(ScopeName);
 			for (const TSharedPtr<FJsonValue>& AssetValue : SelectedScopeObject)
 			{
 				TSharedPtr<FJsonObject> AssetObject = AssetValue->AsObject();
@@ -354,6 +368,14 @@ FReply SPackageManagerInstall::OnAssetButtonClicked(FString AssetName)
                         .Text(FText::FromString("Date: " + Date))
                     ];
                 }
+
+            	// Add the "Install" button
+            	AssetInformationBox->AddSlot().AutoHeight()
+				[
+					SNew(SButton)
+					.Text(FText::FromString("Install"))
+					.OnClicked(this, &SPackageManagerInstall::OnInstallButtonClicked)
+				];
             }
         }
     }
@@ -361,17 +383,48 @@ FReply SPackageManagerInstall::OnAssetButtonClicked(FString AssetName)
     return FReply::Handled();
 }
 
-FSlateColor SPackageManagerInstall::GetRegistryButtonColor(FString RegistryName) const
+FSlateColor SPackageManagerInstall::GetRegistryButtonColor(FString RegistryName)const
 {
 	return RegistryName == SelectedRegistryName ? FSlateColor(FLinearColor::Yellow) : FSlateColor::UseForeground();
 }
 
-FSlateColor SPackageManagerInstall::GetScopeButtonColor(FString ScopeName) const
+FSlateColor SPackageManagerInstall::GetScopeButtonColor(FString ScopeName)const
 {
 	return ScopeName == SelectedScopeName ? FSlateColor(FLinearColor::Yellow) : FSlateColor::UseForeground();
 }
 
-FSlateColor SPackageManagerInstall::GetAssetButtonColor(FString AssetName) const
+FSlateColor SPackageManagerInstall::GetAssetButtonColor(FString AssetName)const
 {
 	return AssetName == SelectedAssetName ? FSlateColor(FLinearColor::Yellow) : FSlateColor::UseForeground();
+}
+
+FReply SPackageManagerInstall::OnInstallButtonClicked()
+{
+	UE_LOG(LogTemp, Log, TEXT("install"));
+	if (SelectedAsset.IsValid())
+	{
+		IPythonScriptPlugin* PythonPlugin = IPythonScriptPlugin::Get();
+
+		if (PythonPlugin)
+		{
+
+			FString PackageName = SelectedAsset->GetStringField("name");
+			FString PluginsDir = FPaths::ProjectPluginsDir();
+			TSharedPtr<FJsonObject> MetaObject = SelectedRegistryObject->GetObjectField(TEXT("meta"));
+			FString RegistryUrl = MetaObject->GetStringField(TEXT("url"));
+			FString ScriptPath = FPaths::ProjectPluginsDir() / TEXT("UPMPlugin/install_package.py");
+
+			FString Command = FString::Printf(TEXT("%s %s %s %s"), *ScriptPath, *PackageName, *PluginsDir, *RegistryUrl);
+
+			if (PythonPlugin->ExecPythonCommand(*Command))
+			{
+				UE_LOG(LogTemp, Log, TEXT("Successfully executed Python command."));
+			}
+			else
+			{
+				UE_LOG(LogTemp, Error, TEXT("Failed to execute Python command."));
+			}
+		}
+	}
+	return FReply::Handled();
 }
