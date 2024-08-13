@@ -17,97 +17,77 @@ static const FName UPMTabName("UPM");
 
 #define LOCTEXT_NAMESPACE "FUPMPluginModule"
 
-TSharedPtr<UUPMPackage> FUPMPluginModule::LoadedPackage = nullptr;
-
 void FUPMPluginModule::StartupModule()
 {
-    FUPMStyle::Initialize();
-    FUPMStyle::ReloadTextures();
+	FUPMStyle::Initialize();
+	FUPMStyle::ReloadTextures();
 
-    FUPMCommands::Register();
+	FUPMCommands::Register();
 
-    PluginCommands = MakeShareable(new FUICommandList);
+	PluginCommands = MakeShareable(new FUICommandList);
 
-    PluginCommands->MapAction(
-        FUPMCommands::Get().OpenUPMWindow,
-        FExecuteAction::CreateRaw(this, &FUPMPluginModule::PluginButtonClicked),
-        FCanExecuteAction());
+	PluginCommands->MapAction(
+		FUPMCommands::Get().OpenUPMWindow,
+		FExecuteAction::CreateRaw(this, &FUPMPluginModule::PluginButtonClicked),
+		FCanExecuteAction());
 
-    UToolMenus::RegisterStartupCallback(FSimpleMulticastDelegate::FDelegate::CreateRaw(this, &FUPMPluginModule::RegisterMenus));
+	UToolMenus::RegisterStartupCallback(
+		FSimpleMulticastDelegate::FDelegate::CreateRaw(this, &FUPMPluginModule::RegisterMenus));
 
-    FGlobalTabmanager::Get()->RegisterNomadTabSpawner(UPMTabName, FOnSpawnTab::CreateRaw(this, &FUPMPluginModule::OnSpawnPluginTab))
-        .SetDisplayName(LOCTEXT("FtempTabTitle", "temp"))
-        .SetMenuType(ETabSpawnerMenuType::Hidden);
+	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(
+		                        UPMTabName, FOnSpawnTab::CreateRaw(this, &FUPMPluginModule::OnSpawnPluginTab))
+	                        .SetDisplayName(NSLOCTEXT("FUPMPluginModule", "TabTitle", "UPMPlugin"))
+	                        .SetMenuType(ETabSpawnerMenuType::Hidden);
+
 }
 
 void FUPMPluginModule::ShutdownModule()
 {
-    UToolMenus::UnRegisterStartupCallback(this);
-    UToolMenus::UnregisterOwner(this);
-    FUPMStyle::Shutdown();
+	UToolMenus::UnRegisterStartupCallback(this);
+	UToolMenus::UnregisterOwner(this);
+	FUPMStyle::Shutdown();
 
-    FUPMCommands::Unregister();
-    FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(UPMTabName);
-
-    if (LoadedPackage.IsValid())
-    {
-        LoadedPackage = nullptr;
-    }
+	FUPMCommands::Unregister();
+	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(UPMTabName);
 }
 
 TSharedRef<SDockTab> FUPMPluginModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 {
-    if (!LoadedPackage.IsValid())
-    {
-        // Load or create the package.json file
-        LoadedPackage = UUPMPackage::LoadOrCreatePackageJson();
-    }
-
-    if (!LoadedPackage.IsValid())
-    {
-        // Handle the error case where the package could not be loaded or created
-        return SNew(SDockTab)
-            .TabRole(ETabRole::NomadTab)
-            [
-                SNew(STextBlock)
-                .Text(FText::FromString("Failed to load or create package.json"))
-            ];
-    }
-
-    return SNew(SDockTab)
-        .TabRole(ETabRole::NomadTab)
-        [
-            SNew(SUPMWindow)
-        ];
+		return SNew(SDockTab)
+		.TabRole(ETabRole::NomadTab)
+		[
+			SNew(SUPMWindow)
+		];
 }
 
 void FUPMPluginModule::PluginButtonClicked()
 {
-    FGlobalTabmanager::Get()->TryInvokeTab(UPMTabName);
+	FGlobalTabmanager::Get()->TryInvokeTab(UPMTabName);
 }
 
 void FUPMPluginModule::RegisterMenus()
 {
-    // Owner will be used for cleanup in call to UToolMenus::UnregisterOwner
-    FToolMenuOwnerScoped OwnerScoped(this);
-    {
-        UToolMenu* Menu = UToolMenus::Get()->ExtendMenu("LevelEditor.MainMenu.Window");
-        {
-            FToolMenuSection& Section = Menu->FindOrAddSection("WindowLayout");
-            Section.AddMenuEntryWithCommandList(FUPMCommands::Get().OpenUPMWindow, PluginCommands);
-        }
-    }
+	// Owner will be used for cleanup in call to UToolMenus::UnregisterOwner
+	FToolMenuOwnerScoped OwnerScoped(this);
+	{
+		UToolMenu* Menu = UToolMenus::Get()->ExtendMenu("LevelEditor.MainMenu.Window");
+		{
+			FToolMenuSection& Section = Menu->FindOrAddSection("WindowLayout");
+			Section.AddMenuEntryWithCommandList(FUPMCommands::Get().OpenUPMWindow, PluginCommands);
+		}
+	}
 
-    {
-        UToolMenu* ToolbarMenu = UToolMenus::Get()->ExtendMenu("LevelEditor.LevelEditorToolBar");
-        {
-            FToolMenuSection& Section = ToolbarMenu->FindOrAddSection("Settings");
-            {
-                FToolMenuEntry& Entry = Section.AddEntry(FToolMenuEntry::InitToolBarButton(FUPMCommands::Get().OpenUPMWindow));
-                Entry.SetCommandList(PluginCommands);
-            }
-        }
-    }
+	{
+		UToolMenu* ToolbarMenu = UToolMenus::Get()->ExtendMenu("LevelEditor.LevelEditorToolBar");
+		{
+			FToolMenuSection& Section = ToolbarMenu->FindOrAddSection("Settings");
+			{
+				FToolMenuEntry& Entry = Section.AddEntry(
+					FToolMenuEntry::InitToolBarButton(FUPMCommands::Get().OpenUPMWindow));
+				Entry.SetCommandList(PluginCommands);
+			}
+		}
+	}
 }
 
 

@@ -3,15 +3,15 @@ import os
 import sys
 
 # Get the npm command from the command-line arguments
-npm_command = sys.argv[1:]
+output_file = sys.argv[1]
+npm_command = sys.argv[2:]
 
+
+print(output_file);
 # Define paths
 npm_path = r'C:\Program Files\nodejs\npm.cmd'
-appdata_dir = os.path.join(os.getenv('APPDATA'), "MyApp")
-os.makedirs(appdata_dir, exist_ok=True)
-
-output_file = os.path.join(appdata_dir, "npm_output.txt")
-log_file = os.path.join(appdata_dir, "script_log.txt")
+output_dir = os.path.dirname(output_file)
+os.makedirs(output_dir, exist_ok=True)
 
 print("Starting subprocess...")
 result = subprocess.run([npm_path] + npm_command, capture_output=True, text=True, check=True, creationflags=subprocess.CREATE_NO_WINDOW)

@@ -13,13 +13,12 @@ public:
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
 
-	/** This function will be bound to Command (by default it will bring up plugin window) */
-	void PluginButtonClicked();
-
-	static TSharedPtr<UUPMPackage> LoadedPackage;
-
 private:
 	void RegisterMenus();
+	/** This function will be bound to Command (by default it will bring up plugin window) */
+	void PluginButtonClicked();
 	TSharedRef<class SDockTab> OnSpawnPluginTab(const class FSpawnTabArgs& SpawnTabArgs);
+
 	TSharedPtr<class FUICommandList> PluginCommands;
+
 };

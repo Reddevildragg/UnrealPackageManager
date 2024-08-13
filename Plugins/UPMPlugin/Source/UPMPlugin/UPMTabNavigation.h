@@ -13,8 +13,14 @@ public:
 
 	void Construct(const FArguments& InArgs);
 
-	FReply SelectMode(const char* Str);
 
 private:
 	TWeakPtr<SUPMWindow> ParentWindow; // Add this member variable
+
+	FName SelectedTab;
+
+	TSharedRef<SButton> CreateButton(FName ModeName, FString ButtonText);
+	FReply SelectMode(FName mode);
+	FSlateColor GetButtonColor(FName AssetName) const;
+
 };

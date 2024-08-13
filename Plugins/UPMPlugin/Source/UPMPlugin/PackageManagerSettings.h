@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
+struct FScopedRegistry;
 class UUPMPackage;
 class SUPMWindow;
 
@@ -16,20 +17,24 @@ public:
 
 	void Construct(const FArguments& InArgs);
 
+	void OnDeselect();
+	void OnSelect();
+
 private:
 	TWeakPtr<SUPMWindow> ParentWindow; // Add this member variable
 	TSharedPtr<UUPMPackage> PackageData; // Add this member variable
 
-	TArray<TSharedPtr<FString>> Items;
 	TArray<TSharedPtr<SVerticalBox>> RegistryBoxes;
 	TArray<TSharedPtr<SWidget>> ScopeTextBoxes;
 	TArray<TSharedPtr<FString>> RegistryNames;
+	TSharedPtr<SListView<TSharedPtr<FString>>> RegistryListView;
 
 	TSharedPtr<SVerticalBox> RegistryDetailsBox;
 
 	FString SelectedRegistryName;
+	FScopedRegistry* SelectedRegistry = nullptr; // Ensure this is a non-const pointer
 
-	TSharedRef<ITableRow> OnGenerateRowForList(TSharedPtr<FString> Item, const TSharedRef<STableViewBase>& OwnerTable);
+
 	TSharedRef<ITableRow> OnGenerateRowForRegistryNames(TSharedPtr<FString> String, const TSharedRef<STableViewBase>& TableViewBase);
 	FReply OnRegistryButtonClicked(FString RegistryName);
 
@@ -39,6 +44,17 @@ private:
 							  FString OldScope);
 
 	FReply OnSaveScopesClicked();
+
+	FSlateColor GetButtonColor(FString AssetName) const;
+
+	FReply OnNewRegistryButtonClicked();
+	FReply OnRemoveRegistryButtonClicked();
+
+	FReply OnNewScopeButtonClicked();
+	FReply OnRemoveScopeButtonClicked(FString ScopeName);
+
 	void StoreInitialValues();
 	void ResetFields();
+	TArray<FScopedRegistry> InitialScopedRegistries ; // Add this member variable
+
 };

@@ -6,57 +6,18 @@
 TMap<FString, FString> InitialRegistryNames;
 TMap<FString, FString> InitialRegistryUrls;
 TMap<FString, TArray<FString>> InitialRegistryScopes;
+TArray<FScopedRegistry> InitialScopedRegistries = {};
 
 void SPackageManagerSettings::Construct(const FArguments& InArgs)
 {
 	ParentWindow = InArgs._ParentWindow;
 	PackageData = InArgs._PackageData;
-
-	Items.Empty();
 	ScopeTextBoxes.Empty();
 	RegistryBoxes.Empty();
 	SelectedRegistryName = "";
 
-	// Log to check if PackageData is set
-	// Log to check if PackageData is set
 	if (PackageData.IsValid())
 	{
-		UE_LOG(LogTemp, Log, TEXT("PackageData is valid"));
-		UE_LOG(LogTemp, Log, TEXT("Package Name: %s"), *PackageData->Name);
-		UE_LOG(LogTemp, Log, TEXT("Package Version: %s"), *PackageData->Version);
-
-		// Log dependencies
-		for (const auto& Elem : PackageData->Dependencies)
-		{
-			UE_LOG(LogTemp, Log, TEXT("Dependency: %s -> %s"), *Elem.Key, *Elem.Value);
-		}
-
-		// Log scoped registries
-		for (const auto& Registry : PackageData->ScopedRegistries)
-		{
-			UE_LOG(LogTemp, Log, TEXT("Registry Name: %s"), *Registry.Name);
-			UE_LOG(LogTemp, Log, TEXT("Registry URL: %s"), *Registry.Url);
-			for (const auto& Scope : Registry.Scopes)
-			{
-				UE_LOG(LogTemp, Log, TEXT("Scope: %s"), *Scope);
-			}
-		}
-	}
-	else
-	{
-		UE_LOG(LogTemp, Error, TEXT("PackageData is not valid"));
-	}
-
-	if (PackageData.IsValid())
-	{
-		Items.Add(MakeShareable(new FString(FString::Printf(TEXT("Name: %s"), *PackageData->Name))));
-		Items.Add(MakeShareable(new FString(FString::Printf(TEXT("Version: %s"), *PackageData->Version))));
-		for (const auto& Elem : PackageData->Dependencies)
-		{
-			Items.Add(MakeShareable(
-				new FString(FString::Printf(TEXT("Dependency: %s -> %s"), *Elem.Key, *Elem.Value))));
-		}
-
 		for (const auto& Registry : PackageData->ScopedRegistries)
 		{
 			RegistryNames.Add(MakeShareable(new FString(Registry.Name)));
@@ -66,20 +27,6 @@ void SPackageManagerSettings::Construct(const FArguments& InArgs)
 	ChildSlot
 	[
 		SNew(SVerticalBox)
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		[
-			SNew(STextBlock)
-			.Text(FText::FromString("Package Information:"))
-		]
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		[
-			SNew(SListView<TSharedPtr<FString>>)
-			.ItemHeight(24)
-			.ListItemsSource(&Items)
-			.OnGenerateRow(this, &SPackageManagerSettings::OnGenerateRowForList)
-		]
 		+ SVerticalBox::Slot()
 		.Padding(0, 10, 0, 0)
 		.AutoHeight()
@@ -95,10 +42,29 @@ void SPackageManagerSettings::Construct(const FArguments& InArgs)
 			+ SSplitter::Slot()
 			.Value(0.3f)
 			[
-				SNew(SListView<TSharedPtr<FString>>)
-				.ItemHeight(24)
-				.ListItemsSource(&RegistryNames)
-				.OnGenerateRow(this, &SPackageManagerSettings::OnGenerateRowForRegistryNames)
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				.FillHeight(1)
+				[
+					SAssignNew(RegistryListView, SListView<TSharedPtr<FString>>)
+					.ItemHeight(24)
+					.ListItemsSource(&RegistryNames)
+					.OnGenerateRow(this, &SPackageManagerSettings::OnGenerateRowForRegistryNames)
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					SNew(SButton)
+					.Text(FText::FromString("Remove Selected"))
+					.OnClicked(this, &SPackageManagerSettings::OnRemoveRegistryButtonClicked)
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					SNew(SButton)
+					.Text(FText::FromString("New Registry"))
+					.OnClicked(this, &SPackageManagerSettings::OnNewRegistryButtonClicked)
+				]
 			]
 			+ SSplitter::Slot()
 			.Value(0.7f)
@@ -106,23 +72,37 @@ void SPackageManagerSettings::Construct(const FArguments& InArgs)
 				SAssignNew(RegistryDetailsBox, SVerticalBox)
 				+ SVerticalBox::Slot()
 				.Padding(15)
-				.AutoHeight()
+				.FillHeight(1)
 				[
 					SNew(STextBlock)
 					.Text(FText::FromString(TEXT("Select a registry from the left to view details.")))
 				]
 			]
 		]
+
+		+ SVerticalBox::Slot()
+		.Padding(0, 10, 0, 0)
+		.AutoHeight()
+		[
+			SNew(SButton)
+			.Text(FText::FromString("Save Scopes"))
+			.OnClicked(this, &SPackageManagerSettings::OnSaveScopesClicked)
+		]
 	];
+
+	StoreInitialValues();
 }
 
-TSharedRef<ITableRow> SPackageManagerSettings::OnGenerateRowForList(TSharedPtr<FString> Item,
-                                                                    const TSharedRef<STableViewBase>& OwnerTable)
+void SPackageManagerSettings::OnDeselect()
 {
-	return SNew(STableRow<TSharedPtr<FString>>, OwnerTable)
-		[
-			SNew(STextBlock).Text(FText::FromString(*Item))
-		];
+	SelectedRegistryName = "";
+	SelectedRegistry = nullptr;
+}
+
+void SPackageManagerSettings::OnSelect()
+{
+	ResetFields();
+	StoreInitialValues();
 }
 
 TSharedRef<ITableRow> SPackageManagerSettings::OnGenerateRowForRegistryNames(TSharedPtr<FString> Item,
@@ -132,91 +112,126 @@ TSharedRef<ITableRow> SPackageManagerSettings::OnGenerateRowForRegistryNames(TSh
 	return SNew(STableRow<TSharedPtr<FString>>, OwnerTable)
 		[
 			SNew(SButton)
-			.Text(FText::FromString(*Item))
-			.OnClicked(this, &SPackageManagerSettings::OnRegistryButtonClicked, *Item)
+			             .Text(FText::FromString(*Item))
+			             .ButtonColorAndOpacity(this, &SPackageManagerSettings::GetButtonColor, *Item)
+						// Apply highlight effect
+			             .OnClicked(this, &SPackageManagerSettings::OnRegistryButtonClicked, *Item)
 		];
 }
 
 FReply SPackageManagerSettings::OnRegistryButtonClicked(FString RegistryName)
 {
-	if (RegistryName != SelectedRegistryName)
-	{
-		ResetFields();
-	}
-
 	SelectedRegistryName = RegistryName;
 
 	RegistryDetailsBox->ClearChildren();
+	SelectedRegistry = nullptr; // Reset the selected registry
 
-	for (const auto& Registry : PackageData->ScopedRegistries)
+	for (auto& Registry : PackageData->ScopedRegistries)
 	{
 		if (Registry.Name == SelectedRegistryName)
 		{
-			RegistryDetailsBox->AddSlot()
-			                  .AutoHeight()
-			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				[
-					SNew(STextBlock)
-					.Text(FText::FromString(TEXT("Registry Name:")))
-				]
-				+ SHorizontalBox::Slot()
-				.FillWidth(1.0f)
-				[
-					SNew(SEditableTextBox)
-					.Text(FText::FromString(Registry.Name))
-					.OnTextCommitted(this, &SPackageManagerSettings::OnRegistryNameTextCommitted, Registry.Name)
-				]
-			];
-
-			RegistryDetailsBox->AddSlot()
-			                  .AutoHeight()
-			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				[
-					SNew(STextBlock)
-					.Text(FText::FromString(TEXT("Registry URL:")))
-				]
-				+ SHorizontalBox::Slot()
-				.FillWidth(1.0f)
-				[
-					SNew(SEditableTextBox)
-					.Text(FText::FromString(Registry.Url))
-					.OnTextCommitted(this, &SPackageManagerSettings::OnRegistryUrlTextCommitted, Registry.Name)
-				]
-			];
-
-			RegistryDetailsBox->AddSlot()
-			                  .AutoHeight()
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("Scopes:")))
-			];
-
-			for (const auto& Scope : Registry.Scopes)
-			{
-				RegistryDetailsBox->AddSlot()
-				                  .AutoHeight()
-				[
-					SNew(SEditableTextBox)
-					.Text(FText::FromString(*Scope))
-					.OnTextCommitted(this, &SPackageManagerSettings::OnScopeTextCommitted, Registry.Name, Scope)
-				];
-			}
-
-			RegistryDetailsBox->AddSlot()
-			                  .AutoHeight()
-			[
-				SNew(SButton)
-				.Text(FText::FromString("Save Scopes"))
-				.OnClicked(this, &SPackageManagerSettings::OnSaveScopesClicked)
-			];
+			SelectedRegistry = &Registry; // Store the reference to the selected registry
 			break;
 		}
+	}
+
+	if (SelectedRegistry)
+	{
+		RegistryDetailsBox->AddSlot()
+		                  .AutoHeight()
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.FillWidth(0.4)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT("Registry Name:")))
+			]
+			+ SHorizontalBox::Slot()
+			.FillWidth(1.0f)
+			[
+				SNew(SEditableTextBox)
+				.Text(FText::FromString(SelectedRegistry->Name))
+				.OnTextCommitted(this, &SPackageManagerSettings::OnRegistryNameTextCommitted, SelectedRegistry->Name)
+			]
+		];
+
+		RegistryDetailsBox->AddSlot().AutoHeight()
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.FillWidth(0.4)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT("Registry URL:")))
+			]
+			+ SHorizontalBox::Slot()
+			.FillWidth(1.0f)
+			[
+				SNew(SEditableTextBox)
+				.Text(FText::FromString(SelectedRegistry->Url))
+				.OnTextCommitted(this, &SPackageManagerSettings::OnRegistryUrlTextCommitted, SelectedRegistry->Name)
+			]
+		];
+
+		RegistryDetailsBox->AddSlot()
+		                  .AutoHeight().Padding(10)
+		[
+			SNew(STextBlock)
+
+			.Text(FText::FromString(TEXT("Scopes:")))
+		];
+
+		// Create the ScrollBox
+		TSharedPtr<SScrollBox> ScrollBox;
+
+		RegistryDetailsBox->AddSlot()
+		                  .FillHeight(1)
+		[
+			SAssignNew(ScrollBox, SScrollBox)
+			.Orientation(Orient_Vertical) // Set the scroll orientation to vertical
+		];
+
+		// Iterate through the scopes and add each as a slot in the ScrollBox
+		for (const auto& Scope : SelectedRegistry->Scopes)
+		{
+			ScrollBox->AddSlot()
+			         .Padding(10, 0, 0, 0)
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.FillWidth(0.9f)
+				[
+					SNew(SEditableTextBox)
+					.Text(FText::FromString(Scope))
+					.OnTextCommitted(this, &SPackageManagerSettings::OnScopeTextCommitted, SelectedRegistry->Name,
+					                 Scope)
+				]
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				[
+					SNew(SButton)
+					.Text(FText::FromString(TEXT("-")))
+					.OnClicked(this, &SPackageManagerSettings::OnRemoveScopeButtonClicked, Scope)
+				]
+				+ SHorizontalBox::Slot()
+.AutoWidth()
+[
+	SNew(SButton)
+	.Text(FText::FromString(TEXT("-")))
+	.OnClicked(this, &SPackageManagerSettings::OnRemoveScopeButtonClicked, Scope)
+]
+			];
+		}
+
+
+		RegistryDetailsBox->AddSlot()
+		                  .AutoHeight()
+		[
+			SNew(SButton)
+			.Text(FText::FromString("New"))
+			.OnClicked(this, &SPackageManagerSettings::OnNewScopeButtonClicked)
+		];
 	}
 
 	return FReply::Handled();
@@ -225,12 +240,23 @@ FReply SPackageManagerSettings::OnRegistryButtonClicked(FString RegistryName)
 void SPackageManagerSettings::OnRegistryNameTextCommitted(const FText& NewText, ETextCommit::Type CommitType,
                                                           FString OldName)
 {
-	for (auto& Registry : PackageData->ScopedRegistries)
+	if (SelectedRegistry && OldName != NewText.ToString())
 	{
-		if (Registry.Name == OldName)
+		SelectedRegistry->Name = NewText.ToString();
+
+		RegistryNames.Empty();
+		if (PackageData.IsValid())
 		{
-			Registry.Name = NewText.ToString();
-			break;
+			for (const auto& Registry : PackageData->ScopedRegistries)
+			{
+				RegistryNames.Add(MakeShareable(new FString(Registry.Name)));
+			}
+		}
+
+		// Refresh the list view to update the UI
+		if (RegistryListView.IsValid())
+		{
+			RegistryListView->RequestListRefresh();
 		}
 	}
 }
@@ -238,13 +264,9 @@ void SPackageManagerSettings::OnRegistryNameTextCommitted(const FText& NewText, 
 void SPackageManagerSettings::OnRegistryUrlTextCommitted(const FText& NewText, ETextCommit::Type CommitType,
                                                          FString RegistryName)
 {
-	for (auto& Registry : PackageData->ScopedRegistries)
+	if (SelectedRegistry)
 	{
-		if (Registry.Name == RegistryName)
-		{
-			Registry.Url = NewText.ToString();
-			break;
-		}
+		SelectedRegistry->Url = NewText.ToString();
 	}
 }
 
@@ -252,15 +274,10 @@ void SPackageManagerSettings::OnScopeTextCommitted(const FText& NewText, ETextCo
                                                    FString RegistryName,
                                                    FString OldScope)
 {
-	// Update the scope in the Package object
-	for (auto& Registry : PackageData->ScopedRegistries)
+	if (SelectedRegistry)
 	{
-		if (Registry.Name == RegistryName)
-		{
-			Registry.Scopes.Remove(OldScope);
-			Registry.Scopes.Add(NewText.ToString());
-			break;
-		}
+		SelectedRegistry->Scopes.Remove(OldScope);
+		SelectedRegistry->Scopes.Add(NewText.ToString());
 	}
 }
 
@@ -268,43 +285,154 @@ FReply SPackageManagerSettings::OnSaveScopesClicked()
 {
 	// Save the updated Package object
 	UUPMPackage::SavePackageJson(PackageData);
+
+	// Update the initial values to the current state
+	StoreInitialValues();
+
 	return FReply::Handled();
 }
 
-// Method to store initial values
+FReply SPackageManagerSettings::OnNewRegistryButtonClicked()
+{
+	// Generate a unique name for the new registry
+	int32 RegistryCount = PackageData->ScopedRegistries.Num();
+	FString NewRegistryName;
+	do
+	{
+		NewRegistryName = FString::Printf(TEXT("Registry%d"), RegistryCount++);
+	}
+	while (RegistryNames.ContainsByPredicate([&](const TSharedPtr<FString>& Name)
+	{
+		return *Name == NewRegistryName;
+	}));
+
+	// Create a new blank registry
+	FScopedRegistry NewRegistry;
+
+	NewRegistry.Name = NewRegistryName;
+	NewRegistry.Url = TEXT("");
+	NewRegistry.Scopes = {};
+
+	// Add the new registry to the PackageData
+	PackageData->ScopedRegistries.Add(NewRegistry);
+
+	// Add the new registry name to the RegistryNames list
+	RegistryNames.Add(MakeShareable(new FString(NewRegistry.Name)));
+
+	// Refresh the list view to update the UI
+	RegistryListView->RequestListRefresh();
+
+	return FReply::Handled();
+}
+
+FSlateColor SPackageManagerSettings::GetButtonColor(FString AssetName) const
+{
+	return AssetName == SelectedRegistryName ? FSlateColor(FLinearColor::Yellow) : FSlateColor::UseForeground();
+}
+
+FReply SPackageManagerSettings::OnNewScopeButtonClicked()
+{
+	if (SelectedRegistry)
+	{
+		// Generate a unique name for the new scope
+		FString NewScopeName = TEXT("NewScope");
+		int32 ScopeCount = 1;
+		while (SelectedRegistry->Scopes.Contains(NewScopeName))
+		{
+			NewScopeName = FString::Printf(TEXT("NewScope%d"), ScopeCount++);
+		}
+
+		// Add the new scope to the registry
+		SelectedRegistry->Scopes.Add(NewScopeName);
+
+		// Refresh the UI to reflect the new scope
+		OnRegistryButtonClicked(SelectedRegistryName);
+	}
+
+	return FReply::Handled();
+}
+
+FReply SPackageManagerSettings::OnRemoveScopeButtonClicked(FString ScopeName)
+{
+	if (SelectedRegistry)
+	{
+		SelectedRegistry->Scopes.Remove(ScopeName);
+		OnRegistryButtonClicked(SelectedRegistryName);
+	}
+
+	return FReply::Handled();
+}
+
+FReply SPackageManagerSettings::OnRemoveRegistryButtonClicked()
+{
+	if (SelectedRegistry)
+	{
+		// Remove the selected registry from PackageData
+		PackageData->ScopedRegistries.RemoveAll([this](const FScopedRegistry& Registry)
+		{
+			return Registry.Name == SelectedRegistryName;
+		});
+
+		// Remove the selected registry name from the RegistryNames list
+		RegistryNames.RemoveAll([this](const TSharedPtr<FString>& Name)
+		{
+			return *Name == SelectedRegistryName;
+		});
+
+		// Clear the selected registry
+		SelectedRegistry = nullptr;
+		SelectedRegistryName = "";
+
+		// Refresh the list view to update the UI
+		RegistryListView->RequestListRefresh();
+
+		// Clear the details box
+		RegistryDetailsBox->ClearChildren();
+		RegistryDetailsBox->AddSlot()
+		                  .AutoHeight()
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Select a registry from the left to view details.")))
+		];
+	}
+
+	return FReply::Handled();
+}
+
 void SPackageManagerSettings::StoreInitialValues()
 {
-	InitialRegistryNames.Empty();
-	InitialRegistryUrls.Empty();
-	InitialRegistryScopes.Empty();
-
-	for (const auto& Registry : PackageData->ScopedRegistries)
+	if (PackageData.IsValid())
 	{
-		InitialRegistryNames.Add(Registry.Name, Registry.Name);
-		InitialRegistryUrls.Add(Registry.Name, Registry.Url);
-		InitialRegistryScopes.Add(Registry.Name, Registry.Scopes);
+		InitialScopedRegistries = PackageData->ScopedRegistries;
 	}
 }
 
-// Method to reset fields to initial values
 void SPackageManagerSettings::ResetFields()
 {
-	for (auto& Registry : PackageData->ScopedRegistries)
+	if (PackageData.IsValid() && InitialScopedRegistries.Num() > 0)
 	{
-		if (InitialRegistryNames.Contains(Registry.Name))
-		{
-			Registry.Name = InitialRegistryNames[Registry.Name];
-		}
-		if (InitialRegistryUrls.Contains(Registry.Name))
-		{
-			Registry.Url = InitialRegistryUrls[Registry.Name];
-		}
-		if (InitialRegistryScopes.Contains(Registry.Name))
-		{
-			Registry.Scopes = InitialRegistryScopes[Registry.Name];
-		}
-	}
+		PackageData->ScopedRegistries = InitialScopedRegistries;
 
-	// Refresh the UI to reflect the reset values
-	OnRegistryButtonClicked(SelectedRegistryName);
+		// Update the RegistryNames list
+		RegistryNames.Empty();
+		for (const auto& Registry : PackageData->ScopedRegistries)
+		{
+			RegistryNames.Add(MakeShareable(new FString(Registry.Name)));
+		}
+
+		// Refresh the list view to update the UI
+		if (RegistryListView.IsValid())
+		{
+			RegistryListView->RequestListRefresh();
+		}
+
+		// Clear the details box
+		RegistryDetailsBox->ClearChildren();
+		RegistryDetailsBox->AddSlot()
+		                  .AutoHeight()
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Select a registry from the left to view details.")))
+		];
+	}
 }

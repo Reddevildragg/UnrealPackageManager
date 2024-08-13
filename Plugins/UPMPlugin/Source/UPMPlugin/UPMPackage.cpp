@@ -4,11 +4,13 @@
 #include "Serialization/JsonSerializer.h"
 #include "Serialization/JsonReader.h"
 
+const FString UUPMPackage::ProjectDir = FPaths::ProjectDir();
+const FString UUPMPackage::UPMDir = FPaths::Combine(ProjectDir, TEXT("Plugins"));
+const FString UUPMPackage::PackageJsonPath = FPaths::Combine(UPMDir, TEXT("package.json"));
+
 UUPMPackage* UUPMPackage::FromJson(TSharedPtr<FJsonObject> JsonObject)
 {
     UUPMPackage* Package = NewObject<UUPMPackage>();
-    Package->Name = JsonObject->GetStringField(TEXT("name"));
-    Package->Version = JsonObject->GetStringField(TEXT("version"));
 
     const TSharedPtr<FJsonObject>* DependenciesObject;
     if (JsonObject->TryGetObjectField(TEXT("dependencies"), DependenciesObject))
@@ -45,13 +47,9 @@ UUPMPackage* UUPMPackage::FromJson(TSharedPtr<FJsonObject> JsonObject)
     return Package;
 }
 
-
+// Use static constants in the methods
 TSharedPtr<UUPMPackage> UUPMPackage::LoadOrCreatePackageJson()
 {
-    FString ProjectDir = FPaths::ProjectDir();
-    FString UPMDir = FPaths::Combine(ProjectDir, TEXT("UPM"));
-    FString PackageJsonPath = FPaths::Combine(UPMDir, TEXT("package.json"));
-
     if (!FPaths::DirectoryExists(UPMDir))
     {
         FPlatformFileManager::Get().GetPlatformFile().CreateDirectoryTree(*UPMDir);
@@ -61,35 +59,10 @@ TSharedPtr<UUPMPackage> UUPMPackage::LoadOrCreatePackageJson()
     if (!FPaths::FileExists(PackageJsonPath))
     {
         TSharedPtr<FJsonObject> JsonObject = MakeShareable(new FJsonObject);
-        JsonObject->SetStringField(TEXT("name"), TEXT("UPM Plugin Package"));
-        JsonObject->SetStringField(TEXT("version"), TEXT("1.0.0"));
-
         TSharedPtr<FJsonObject> DependenciesObject = MakeShareable(new FJsonObject);
-        DependenciesObject->SetStringField(TEXT("fs-extra"), TEXT("^11.2.0"));
-        DependenciesObject->SetStringField(TEXT("vue-router"), TEXT("^4.4.2"));
         JsonObject->SetObjectField(TEXT("dependencies"), DependenciesObject);
 
         TArray<TSharedPtr<FJsonValue>> ScopedRegistriesArray;
-
-        auto CreateRegistry = [](const FString& Name, const FString& Url, const TArray<FString>& Scopes) -> TSharedPtr<FJsonValueObject>
-        {
-            TSharedPtr<FJsonObject> RegistryObject = MakeShareable(new FJsonObject);
-            RegistryObject->SetStringField(TEXT("name"), Name);
-            RegistryObject->SetStringField(TEXT("url"), Url);
-
-            TArray<TSharedPtr<FJsonValue>> ScopesArray;
-            for (const auto& Scope : Scopes)
-            {
-                ScopesArray.Add(MakeShareable(new FJsonValueString(Scope)));
-            }
-            RegistryObject->SetArrayField(TEXT("scopes"), ScopesArray);
-
-            return MakeShareable(new FJsonValueObject(RegistryObject));
-        };
-
-        ScopedRegistriesArray.Add(CreateRegistry(TEXT("Atkins"), TEXT("https://npm.pkg.jetbrains.space/atkinscreativedesign/p/package-server/atkins"), { TEXT("com.atkins") }));
-        ScopedRegistriesArray.Add(CreateRegistry(TEXT("Assets"), TEXT("https://npm.pkg.jetbrains.space/atkinscreativedesign/p/package-server/assets"), { TEXT("unity.assetstore"), TEXT("com.joshclose") }));
-        ScopedRegistriesArray.Add(CreateRegistry(TEXT("OpenUpm"), TEXT("https://package.openupm.com"), { TEXT("com.greener-games"), TEXT("com.seb-lague"), TEXT("com.svermeulen"), TEXT("com.janniklassahn"), TEXT("com.tayx"), TEXT("com.azixmcaze"), TEXT("jillejr.newtonsoft"), TEXT("com.mbdavid.litedb"), TEXT("com.guerrillacontra"), TEXT("com.marijnzwemmer"), TEXT("com.joshclose.csvhelper"), TEXT("com.firenero"), TEXT("com.gkngkc") }));
 
         JsonObject->SetArrayField(TEXT("scopedRegistries"), ScopedRegistriesArray);
 
@@ -120,8 +93,6 @@ TSharedPtr<UUPMPackage> UUPMPackage::LoadOrCreatePackageJson()
 void UUPMPackage::SavePackageJson(TSharedPtr<UUPMPackage> Package)
 {
     TSharedPtr<FJsonObject> JsonObject = MakeShareable(new FJsonObject);
-    JsonObject->SetStringField(TEXT("name"), Package->Name);
-    JsonObject->SetStringField(TEXT("version"), Package->Version);
 
     TSharedPtr<FJsonObject> DependenciesObject = MakeShareable(new FJsonObject);
     for (const auto& Elem : Package->Dependencies)
@@ -152,9 +123,6 @@ void UUPMPackage::SavePackageJson(TSharedPtr<UUPMPackage> Package)
     TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&OutputString);
     if (FJsonSerializer::Serialize(JsonObject.ToSharedRef(), Writer))
     {
-        FString ProjectDir = FPaths::ProjectDir();
-        FString UPMDir = FPaths::Combine(ProjectDir, TEXT("UPM"));
-        FString PackageJsonPath = FPaths::Combine(UPMDir, TEXT("package.json"));
         FFileHelper::SaveStringToFile(OutputString, *PackageJsonPath);
     }
 }
