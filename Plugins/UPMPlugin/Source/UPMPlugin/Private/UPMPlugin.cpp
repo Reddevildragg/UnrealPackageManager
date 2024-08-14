@@ -39,6 +39,7 @@ void FUPMPluginModule::StartupModule()
 	                        .SetDisplayName(NSLOCTEXT("FUPMPluginModule", "TabTitle", "UPMPlugin"))
 	                        .SetMenuType(ETabSpawnerMenuType::Hidden);
 
+	UE_LOG(LogTemp, Log, TEXT("UPM Setup Complete"));
 }
 
 void FUPMPluginModule::ShutdownModule()
@@ -52,6 +53,8 @@ void FUPMPluginModule::ShutdownModule()
 
 TSharedRef<SDockTab> FUPMPluginModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 {
+	UE_LOG(LogTemp, Log, TEXT("Opening UPM"));
+
 	return SNew(SDockTab)
 	.TabRole(ETabRole::NomadTab)
 	[

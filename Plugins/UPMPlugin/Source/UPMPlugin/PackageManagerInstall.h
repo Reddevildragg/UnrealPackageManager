@@ -47,4 +47,7 @@ private:
 	FSlateColor GetScopeButtonColor(FString ScopeName) const;
 	FSlateColor GetAssetButtonColor(FString AssetName) const;
 	FReply OnInstallButtonClicked();
+
+	void ResetScopeSelection();
+	void ResetAssetSelection();
 };

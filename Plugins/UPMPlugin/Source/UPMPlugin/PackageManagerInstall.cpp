@@ -269,6 +269,7 @@ void SPackageManagerInstall::GenerateRegistryButtons()
 FReply SPackageManagerInstall::OnRegistryButtonClicked(FString RegistryName)
 {
 	SelectedRegistryName = RegistryName; // Set the selected registry name
+	ResetScopeSelection();
 
 	// Clear the ScopeSelectBox before adding new buttons
 	if (ScopeSelectBox.IsValid())
@@ -314,7 +315,7 @@ FReply SPackageManagerInstall::OnRegistryButtonClicked(FString RegistryName)
 FReply SPackageManagerInstall::OnScopeButtonClicked(FString ScopeName)
 {
 	SelectedScopeName = ScopeName; // Set the selected scope name
-
+	ResetAssetSelection();
 	// Clear the AssetSelectBox before adding new buttons
 	if (AssetSelectBox.IsValid())
 	{
@@ -491,4 +492,40 @@ FReply SPackageManagerInstall::OnInstallButtonClicked()
 		}
 	}
 	return FReply::Handled();
+}
+
+void SPackageManagerInstall::ResetScopeSelection()
+{
+	if (ScopeSelectBox.IsValid())
+	{
+		ScopeSelectBox->ClearChildren();
+		ScopeSelectBox->AddSlot().AutoHeight()
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Select a registry from the left to view details.")))
+		];
+	}
+	ResetAssetSelection();
+}
+
+void SPackageManagerInstall::ResetAssetSelection()
+{
+	if (AssetSelectBox.IsValid())
+	{
+		AssetSelectBox->ClearChildren();
+		AssetSelectBox->AddSlot().AutoHeight()
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Select a scope from the left to view details.")))
+		];
+	}
+	if (AssetInformationBox.IsValid())
+	{
+		AssetInformationBox->ClearChildren();
+		AssetInformationBox->AddSlot().AutoHeight()
+		[
+			SNew(STextBlock)
+			.Text(FText::FromString(TEXT("Select an asset from the left to view details.")))
+		];
+	}
 }
