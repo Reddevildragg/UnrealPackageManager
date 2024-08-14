@@ -1,7 +1,9 @@
 ﻿#include "UPMWindow.h"
 
-#include "UPMPlugin.h"
-#include "UPMPlugin/UPMTabNavigation.h"
+#include "PackageManagerInstall.h"
+#include "PackageManagerSettings.h"
+#include "UPMPackageJson.h"
+#include "UPMTabNavigation.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/Input/SButton.h"
@@ -64,7 +66,8 @@ void SUPMWindow::UpdateMode(const FString& Str)
     UE_LOG(LogTemp, Log, TEXT("Mode updated to: %s"), *Str);
 
     SettingsLayout->OnDeselect();
-
+	InstallLayout->OnDeselect();
+	
     if (Str == "Settings")
     {
         CurrentLayout = SettingsLayout;
@@ -73,6 +76,7 @@ void SUPMWindow::UpdateMode(const FString& Str)
     else
     {
         CurrentLayout = InstallLayout;
+    	InstallLayout->OnSelect();
     }
 
     LayoutContainer->ClearChildren();

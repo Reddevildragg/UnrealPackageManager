@@ -121,5 +121,9 @@ void UUPMPackageJson::SavePackageJson()
 
 TSharedPtr<FPackageJson> UUPMPackageJson::GetJsonObject() const
 {
+    if (!LoadedPackage.IsValid())
+    {
+        return MakeShareable(new FPackageJson());
+    }
     return LoadedPackage;
 }

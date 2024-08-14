@@ -19,6 +19,12 @@ public:
 	void OnDeselect();
 	void OnSelect();
 
+	virtual ~SPackageManagerSettings() override
+	{
+		ParentWindow.Reset();
+		PackageJsonHandlerPtr.Reset();
+	}
+
 private:
 	TWeakPtr<SUPMWindow> ParentWindow; // Add this member variable
 	TWeakObjectPtr<UUPMPackageJson> PackageJsonHandlerPtr;

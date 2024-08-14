@@ -136,6 +136,11 @@ TSharedRef<ITableRow> SPackageManagerSettings::OnGenerateRowForRegistryNames(TSh
 
 FReply SPackageManagerSettings::OnRegistryButtonClicked(FString RegistryName)
 {
+	if (PackageJsonHandlerPtr == nullptr)
+	{
+		return FReply::Handled();
+	}
+
 	SelectedRegistryName = RegistryName;
 
 	RegistryDetailsBox->ClearChildren();
@@ -229,13 +234,6 @@ FReply SPackageManagerSettings::OnRegistryButtonClicked(FString RegistryName)
 					.Text(FText::FromString(TEXT("-")))
 					.OnClicked(this, &SPackageManagerSettings::OnRemoveScopeButtonClicked, Scope)
 				]
-				+ SHorizontalBox::Slot()
-.AutoWidth()
-[
-	SNew(SButton)
-	.Text(FText::FromString(TEXT("-")))
-	.OnClicked(this, &SPackageManagerSettings::OnRemoveScopeButtonClicked, Scope)
-]
 			];
 		}
 

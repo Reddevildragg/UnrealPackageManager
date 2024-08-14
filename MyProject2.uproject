@@ -19,17 +19,9 @@
 			]
 		},
 		{
-			"Name": "Omniverse",
-			"Enabled": false
-		},
-		{
 			"Name": "BlueprintableSubsystem",
-			"Enabled": true,
+			"Enabled": false,
 			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/ba6ad0f2e5484c53baf97f1dc806a96c"
-		},
-		{
-			"Name": "UPM",
-			"Enabled": false
 		}
 	]
 }

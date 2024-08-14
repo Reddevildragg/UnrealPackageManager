@@ -1,10 +1,11 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
-#include "UPMPlugin/PackageManagerInstall.h"
-#include "UPMPlugin/PackageManagerSettings.h"
-#include "UPMPlugin/UPMPackageJson.h"
 #include "Widgets/SCompoundWidget.h"
+
+class SPackageManagerSettings;
+class SPackageManagerInstall;
+class UUPMPackageJson;
 
 class SUPMWindow : public SCompoundWidget
 {

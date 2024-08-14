@@ -120,6 +120,31 @@ void SPackageManagerInstall::Construct(const FArguments& InArgs)
 	];
 }
 
+void SPackageManagerInstall::OnDeselect()
+{
+	ResetAssetSelection();
+	ResetScopeSelection();
+
+	SelectedRegistryName = "";
+	SelectedScopeName = "";
+	SelectedAssetName = "";
+
+	SelectedAsset = nullptr;
+}
+
+void SPackageManagerInstall::OnSelect()
+{
+	FDateTime PackageJsonTime = IFileManager::Get().GetTimeStamp(*PackageJsonPath);
+	FDateTime CombinedOutputTime = IFileManager::Get().GetTimeStamp(*CombinedOutputFilePath);
+
+	if (PackageJsonTime > CombinedOutputTime)
+	{
+		FetchPackageInformation();
+	}
+
+
+}
+
 FReply SPackageManagerInstall::FetchPackageInformation()
 {
 	IPythonScriptPlugin* PythonPlugin = IPythonScriptPlugin::Get();
@@ -490,6 +515,8 @@ FReply SPackageManagerInstall::OnInstallButtonClicked()
 				UE_LOG(LogTemp, Error, TEXT("Failed to execute Python command."));
 			}
 		}
+
+		OnAssetButtonClicked(SelectedAssetName);
 	}
 	return FReply::Handled();
 }

@@ -3,7 +3,6 @@
 #include "CoreMinimal.h"
 #include "UPMWindow.h"
 #include "Modules/ModuleManager.h"
-#include "UPMPlugin/UPMPackageJson.h"
 
 class FToolBarBuilder;
 class FMenuBuilder;

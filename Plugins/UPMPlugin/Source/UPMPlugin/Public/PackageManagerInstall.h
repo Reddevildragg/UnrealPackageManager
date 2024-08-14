@@ -15,6 +15,14 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+	void OnDeselect();
+	void OnSelect();
+
+		virtual ~SPackageManagerInstall() override
+    	{
+    		ParentWindow.Reset();
+    		PackageJsonHandlerPtr.Reset();
+    	}
 
 private:
 	TWeakPtr<SUPMWindow> ParentWindow; // Add this member variable
