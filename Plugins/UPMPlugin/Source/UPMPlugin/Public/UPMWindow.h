@@ -3,8 +3,7 @@
 #include "CoreMinimal.h"
 #include "UPMPlugin/PackageManagerInstall.h"
 #include "UPMPlugin/PackageManagerSettings.h"
-#include "UPMPlugin/UPMPackage.h"
-#include "UPMPlugin/UPMTabNavigation.h"
+#include "UPMPlugin/UPMPackageJson.h"
 #include "Widgets/SCompoundWidget.h"
 
 class SUPMWindow : public SCompoundWidget
@@ -14,10 +13,13 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+
 	void UpdateMode(const FString& Str);
 
+	TSharedPtr<FPackageJson> GetPackageJsonData() const;
+
 private:
-	TSharedPtr<UUPMPackage> Package;
+	TSharedPtr<UUPMPackageJson> PackageJsonHandler;
 
 	//Menu Items
 	TSharedPtr<SPackageManagerInstall> InstallLayout;

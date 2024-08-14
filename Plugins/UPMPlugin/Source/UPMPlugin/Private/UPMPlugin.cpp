@@ -46,18 +46,17 @@ void FUPMPluginModule::ShutdownModule()
 	UToolMenus::UnRegisterStartupCallback(this);
 	UToolMenus::UnregisterOwner(this);
 	FUPMStyle::Shutdown();
-
 	FUPMCommands::Unregister();
 	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(UPMTabName);
 }
 
 TSharedRef<SDockTab> FUPMPluginModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
 {
-		return SNew(SDockTab)
-		.TabRole(ETabRole::NomadTab)
-		[
-			SNew(SUPMWindow)
-		];
+	return SNew(SDockTab)
+	.TabRole(ETabRole::NomadTab)
+	[
+		SNew(SUPMWindow)
+	];
 }
 
 void FUPMPluginModule::PluginButtonClicked()

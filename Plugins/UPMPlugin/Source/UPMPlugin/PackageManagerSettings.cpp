@@ -1,7 +1,8 @@
 ﻿#include "PackageManagerSettings.h"
-#include "UPMPackage.h"
+#include "UPMPackageJson.h"
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/Input/SButton.h"
+#include "UPMPlugin/Public/UPMWindow.h"
 
 TMap<FString, FString> InitialRegistryNames;
 TMap<FString, FString> InitialRegistryUrls;
@@ -11,17 +12,31 @@ TArray<FScopedRegistry> InitialScopedRegistries = {};
 void SPackageManagerSettings::Construct(const FArguments& InArgs)
 {
 	ParentWindow = InArgs._ParentWindow;
-	PackageData = InArgs._PackageData;
+	PackageJsonHandlerPtr = InArgs._PackageJsonHandler;
+
+	if (PackageJsonHandlerPtr == nullptr)
+	{
+		// Display an error message if the package is not valid
+		ChildSlot
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot().Padding(10).FillHeight(1)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT("Failed to load or create package.json")))
+				.ColorAndOpacity(FLinearColor::Red)
+			]
+		];
+		return;
+	}
+
 	ScopeTextBoxes.Empty();
 	RegistryBoxes.Empty();
 	SelectedRegistryName = "";
 
-	if (PackageData.IsValid())
+	for (const auto& Registry : PackageJsonHandlerPtr->GetJsonObject()->ScopedRegistries)
 	{
-		for (const auto& Registry : PackageData->ScopedRegistries)
-		{
-			RegistryNames.Add(MakeShareable(new FString(Registry.Name)));
-		}
+		RegistryNames.Add(MakeShareable(new FString(Registry.Name)));
 	}
 
 	ChildSlot
@@ -126,7 +141,7 @@ FReply SPackageManagerSettings::OnRegistryButtonClicked(FString RegistryName)
 	RegistryDetailsBox->ClearChildren();
 	SelectedRegistry = nullptr; // Reset the selected registry
 
-	for (auto& Registry : PackageData->ScopedRegistries)
+	for (auto& Registry : PackageJsonHandlerPtr->GetJsonObject()->ScopedRegistries)
 	{
 		if (Registry.Name == SelectedRegistryName)
 		{
@@ -245,12 +260,10 @@ void SPackageManagerSettings::OnRegistryNameTextCommitted(const FText& NewText, 
 		SelectedRegistry->Name = NewText.ToString();
 
 		RegistryNames.Empty();
-		if (PackageData.IsValid())
+
+		for (const auto& Registry : PackageJsonHandlerPtr->GetJsonObject()->ScopedRegistries)
 		{
-			for (const auto& Registry : PackageData->ScopedRegistries)
-			{
-				RegistryNames.Add(MakeShareable(new FString(Registry.Name)));
-			}
+			RegistryNames.Add(MakeShareable(new FString(Registry.Name)));
 		}
 
 		// Refresh the list view to update the UI
@@ -284,8 +297,7 @@ void SPackageManagerSettings::OnScopeTextCommitted(const FText& NewText, ETextCo
 FReply SPackageManagerSettings::OnSaveScopesClicked()
 {
 	// Save the updated Package object
-	UUPMPackage::SavePackageJson(PackageData);
-
+	PackageJsonHandlerPtr->SavePackageJson();
 	// Update the initial values to the current state
 	StoreInitialValues();
 
@@ -295,7 +307,7 @@ FReply SPackageManagerSettings::OnSaveScopesClicked()
 FReply SPackageManagerSettings::OnNewRegistryButtonClicked()
 {
 	// Generate a unique name for the new registry
-	int32 RegistryCount = PackageData->ScopedRegistries.Num();
+	int32 RegistryCount = PackageJsonHandlerPtr->GetJsonObject()->ScopedRegistries.Num();
 	FString NewRegistryName;
 	do
 	{
@@ -314,7 +326,7 @@ FReply SPackageManagerSettings::OnNewRegistryButtonClicked()
 	NewRegistry.Scopes = {};
 
 	// Add the new registry to the PackageData
-	PackageData->ScopedRegistries.Add(NewRegistry);
+	PackageJsonHandlerPtr->GetJsonObject()->ScopedRegistries.Add(NewRegistry);
 
 	// Add the new registry name to the RegistryNames list
 	RegistryNames.Add(MakeShareable(new FString(NewRegistry.Name)));
@@ -368,7 +380,7 @@ FReply SPackageManagerSettings::OnRemoveRegistryButtonClicked()
 	if (SelectedRegistry)
 	{
 		// Remove the selected registry from PackageData
-		PackageData->ScopedRegistries.RemoveAll([this](const FScopedRegistry& Registry)
+		PackageJsonHandlerPtr->GetJsonObject()->ScopedRegistries.RemoveAll([this](const FScopedRegistry& Registry)
 		{
 			return Registry.Name == SelectedRegistryName;
 		});
@@ -401,21 +413,21 @@ FReply SPackageManagerSettings::OnRemoveRegistryButtonClicked()
 
 void SPackageManagerSettings::StoreInitialValues()
 {
-	if (PackageData.IsValid())
+	if (PackageJsonHandlerPtr != nullptr )
 	{
-		InitialScopedRegistries = PackageData->ScopedRegistries;
+		InitialScopedRegistries = PackageJsonHandlerPtr->GetJsonObject()->ScopedRegistries;
 	}
 }
 
 void SPackageManagerSettings::ResetFields()
 {
-	if (PackageData.IsValid() && InitialScopedRegistries.Num() > 0)
+	if (PackageJsonHandlerPtr != nullptr && InitialScopedRegistries.Num() > 0)
 	{
-		PackageData->ScopedRegistries = InitialScopedRegistries;
+		PackageJsonHandlerPtr->GetJsonObject()->ScopedRegistries = InitialScopedRegistries;
 
 		// Update the RegistryNames list
 		RegistryNames.Empty();
-		for (const auto& Registry : PackageData->ScopedRegistries)
+		for (const auto& Registry : PackageJsonHandlerPtr->GetJsonObject()->ScopedRegistries)
 		{
 			RegistryNames.Add(MakeShareable(new FString(Registry.Name)));
 		}

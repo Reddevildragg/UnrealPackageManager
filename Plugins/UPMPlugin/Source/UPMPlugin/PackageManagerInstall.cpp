@@ -1,5 +1,5 @@
 ﻿#include "PackageManagerInstall.h"
-#include "UPMPackage.h"
+#include "UPMPackageJson.h"
 #include "Widgets/Input/SButton.h"
 #include "IPythonScriptPlugin.h"
 #include "Misc/FileHelper.h"
@@ -7,6 +7,7 @@
 #include "Dom/JsonObject.h"
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
+#include "UPMPlugin/Public/UPMWindow.h"
 
 const FString PackageJsonPath = FPaths::Combine(FPaths::ProjectPluginsDir(), TEXT("package.json"));
 const FString AppDataPath = FPlatformMisc::GetEnvironmentVariable(TEXT("APPDATA"));
@@ -25,7 +26,23 @@ const FString InstallNpmPath = FPaths::ProjectPluginsDir() / TEXT("UPMPlugin/ins
 void SPackageManagerInstall::Construct(const FArguments& InArgs)
 {
 	ParentWindow = InArgs._ParentWindow;
-	PackageData = InArgs._PackageData;
+	PackageJsonHandlerPtr = InArgs._PackageJsonHandler;
+	if (PackageJsonHandlerPtr == nullptr)
+	{
+		// Display an error message if the package is not valid
+		ChildSlot
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot().Padding(10).FillHeight(1)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT("Failed to load or create package.json")))
+				.ColorAndOpacity(FLinearColor::Red)
+			]
+		];
+		return;
+	}
+
 
 	SAssignNew(RegistrySelectBox, SVerticalBox)
 	+ SVerticalBox::Slot()
@@ -112,7 +129,7 @@ FReply SPackageManagerInstall::FetchPackageInformation()
 		TSharedPtr<FJsonObject> MasterJsonObject = MakeShareable(new FJsonObject);
 
 		// Extract scoped registries from PackageData
-		const TArray<FScopedRegistry>& ScopedRegistries = PackageData->ScopedRegistries;
+		const TArray<FScopedRegistry>& ScopedRegistries = PackageJsonHandlerPtr->GetJsonObject()->ScopedRegistries;
 		if (ScopedRegistries.Num() > 0)
 		{
 			for (const FScopedRegistry& Registry : ScopedRegistries)

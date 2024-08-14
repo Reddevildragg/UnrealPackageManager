@@ -8,32 +8,35 @@
 
 void SUPMWindow::Construct(const FArguments& InArgs)
 {
-	// Load or create the package.json file
-	Package = UUPMPackage::LoadOrCreatePackageJson();
+	UE_LOG(LogTemp, Log, TEXT("Constructing UPM Window"));
 
-	if (!Package.IsValid())
+	// Create and initialize the UUPMPackageJson object
+	PackageJsonHandler = MakeShareable(NewObject<UUPMPackageJson>(), [](UUPMPackageJson* Ptr) { Ptr->ConditionalBeginDestroy(); });
+	if (PackageJsonHandler.IsValid())
 	{
-		// Display an error message if the package is not valid
-		ChildSlot
-		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().Padding(10).FillHeight(1)
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("Failed to load or create package.json")))
-				.ColorAndOpacity(FLinearColor::Red)
-			]
-		];
-		return;
+		PackageJsonHandler->LoadOrCreatePackageJson();
+		if (PackageJsonHandler->GetJsonObject().IsValid())
+		{
+			UE_LOG(LogTemp, Log, TEXT("Successfully loaded or created package.json"));
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("Failed to load package.json data"));
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("Failed to create UUPMPackageJson instance"));
 	}
 
 	// Create Layout1 and Layout2 widgets
-	SettingsLayout = SNew(SPackageManagerSettings).ParentWindow(SharedThis(this)).PackageData(Package);
-	InstallLayout = SNew(SPackageManagerInstall).ParentWindow(SharedThis(this)).PackageData(Package);
+	SettingsLayout = SNew(SPackageManagerSettings).ParentWindow(SharedThis(this)).PackageJsonHandler(TWeakObjectPtr<UUPMPackageJson>(PackageJsonHandler.Get()));
+	InstallLayout = SNew(SPackageManagerInstall).ParentWindow(SharedThis(this)).PackageJsonHandler(TWeakObjectPtr<UUPMPackageJson>(PackageJsonHandler.Get()));
 
 	// Create LayoutContainer to hold the layout switching part
 	LayoutContainer = SNew(SVerticalBox);
 
+	UE_LOG(LogTemp, Log, TEXT("Layouits Loaded"));
 	ChildSlot
 	[
 		SNew(SVerticalBox)
@@ -60,7 +63,10 @@ void SUPMWindow::Construct(const FArguments& InArgs)
 			]
 		]
 	];
+
+	UpdateMode("Settings");
 }
+
 
 void SUPMWindow::UpdateMode(const FString& Str)
 {
@@ -86,4 +92,9 @@ void SUPMWindow::UpdateMode(const FString& Str)
 	[
 		CurrentLayout.ToSharedRef()
 	];
+}
+
+TSharedPtr<FPackageJson> SUPMWindow::GetPackageJsonData() const
+{
+	return PackageJsonHandler.IsValid() ? PackageJsonHandler->GetJsonObject() : nullptr;
 }

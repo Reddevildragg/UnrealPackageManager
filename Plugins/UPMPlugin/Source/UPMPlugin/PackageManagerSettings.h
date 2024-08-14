@@ -1,17 +1,16 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
+#include "UPMPackageJson.h"
 #include "Widgets/SCompoundWidget.h"
-struct FScopedRegistry;
-class UUPMPackage;
-class SUPMWindow;
 
+class SUPMWindow;
 class SPackageManagerSettings : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SPackageManagerSettings){}
 		SLATE_ARGUMENT(TWeakPtr<SUPMWindow>, ParentWindow)
-		SLATE_ARGUMENT(TSharedPtr<UUPMPackage>, PackageData)
+		SLATE_ARGUMENT(TWeakObjectPtr<UUPMPackageJson>, PackageJsonHandler)
 
 	SLATE_END_ARGS()
 
@@ -22,7 +21,7 @@ public:
 
 private:
 	TWeakPtr<SUPMWindow> ParentWindow; // Add this member variable
-	TSharedPtr<UUPMPackage> PackageData; // Add this member variable
+	TWeakObjectPtr<UUPMPackageJson> PackageJsonHandlerPtr;
 
 	TArray<TSharedPtr<SVerticalBox>> RegistryBoxes;
 	TArray<TSharedPtr<SWidget>> ScopeTextBoxes;

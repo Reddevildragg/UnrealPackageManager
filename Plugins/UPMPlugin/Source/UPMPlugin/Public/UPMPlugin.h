@@ -1,8 +1,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "UPMWindow.h"
 #include "Modules/ModuleManager.h"
-#include "UPMPlugin/UPMPackage.h"
+#include "UPMPlugin/UPMPackageJson.h"
 
 class FToolBarBuilder;
 class FMenuBuilder;
@@ -20,5 +21,4 @@ private:
 	TSharedRef<class SDockTab> OnSpawnPluginTab(const class FSpawnTabArgs& SpawnTabArgs);
 
 	TSharedPtr<class FUICommandList> PluginCommands;
-
 };
