@@ -16,8 +16,6 @@ public:
 
 	void UpdateMode(const FString& Str);
 
-	TSharedPtr<FPackageJson> GetPackageJsonData() const;
-
 private:
 	TSharedPtr<UUPMPackageJson> PackageJsonHandler;
 

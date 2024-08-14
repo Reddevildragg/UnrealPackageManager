@@ -234,7 +234,6 @@ void SPackageManagerInstall::GenerateRegistryButtons()
 			TSharedPtr<FJsonObject> RegistryObject = RegistryEntry.Value->AsObject();
 			TSharedPtr<FJsonObject> MetaObject = RegistryObject->GetObjectField(TEXT("meta"));
 			FString RegistryName = MetaObject->GetStringField(TEXT("name"));
-
 			bool bHasValidScope = false;
 
 			// Access the scopes tag within the RegistryObject
