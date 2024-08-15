@@ -141,8 +141,6 @@ void SPackageManagerInstall::OnSelect()
 	{
 		FetchPackageInformation();
 	}
-
-
 }
 
 FReply SPackageManagerInstall::FetchPackageInformation()

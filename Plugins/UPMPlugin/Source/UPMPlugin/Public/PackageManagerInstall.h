@@ -20,8 +20,11 @@ public:
 
 		virtual ~SPackageManagerInstall() override
     	{
-    		ParentWindow.Reset();
-    		PackageJsonHandlerPtr.Reset();
+			if(ParentWindow.IsValid())
+				ParentWindow.Reset();
+
+			if(PackageJsonHandlerPtr.IsValid())
+				PackageJsonHandlerPtr.Reset();
     	}
 
 private:

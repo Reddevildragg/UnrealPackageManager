@@ -65,18 +65,18 @@ void SUPMWindow::UpdateMode(const FString& Str)
 {
     UE_LOG(LogTemp, Log, TEXT("Mode updated to: %s"), *Str);
 
-    SettingsLayout->OnDeselect();
-	InstallLayout->OnDeselect();
-	
+
     if (Str == "Settings")
     {
         CurrentLayout = SettingsLayout;
         SettingsLayout->OnSelect();
+    	InstallLayout->OnDeselect();
     }
     else
     {
         CurrentLayout = InstallLayout;
     	InstallLayout->OnSelect();
+    	SettingsLayout->OnDeselect();
     }
 
     LayoutContainer->ClearChildren();

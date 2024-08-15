@@ -21,7 +21,10 @@ public:
 
 	virtual ~SPackageManagerSettings() override
 	{
+		if(ParentWindow.IsValid())
 		ParentWindow.Reset();
+
+		if(PackageJsonHandlerPtr.IsValid())
 		PackageJsonHandlerPtr.Reset();
 	}
 
